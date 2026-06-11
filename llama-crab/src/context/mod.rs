@@ -1,6 +1,8 @@
 //! `LlamaContext` and its parameters.
 
+pub mod embeddings;
 pub mod params;
+pub mod session;
 
 use std::ptr::NonNull;
 
