@@ -31,6 +31,33 @@ impl<'a> LlamaContext<'a> {
         unsafe { sys::llama_n_ctx(self.handle.as_ptr()) as u32 }
     }
 
+    /// Logical maximum batch size (`n_batch`).
+    #[must_use]
+    pub fn n_batch(&self) -> u32 {
+        unsafe { sys::llama_n_batch(self.handle.as_ptr()) as u32 }
+    }
+
+    /// Physical batch size (`n_ubatch`).
+    #[must_use]
+    pub fn n_ubatch(&self) -> u32 {
+        unsafe { sys::llama_n_ubatch(self.handle.as_ptr()) as u32 }
+    }
+
+    /// Maximum number of parallel sequences.
+    #[must_use]
+    pub fn n_seq_max(&self) -> u32 {
+        unsafe { sys::llama_n_seq_max(self.handle.as_ptr()) as u32 }
+    }
+
+    /// Borrow the underlying raw context handle.
+    ///
+    /// Useful for FFI interop (e.g. feeding multimodal chunks). The pointer
+    /// is valid for the lifetime of `self`.
+    #[must_use]
+    pub fn raw_handle(&self) -> *mut sys::llama_context {
+        self.handle.as_ptr()
+    }
+
     /// Decode a batch of tokens. `clear` must be called or the batch reset
     /// between decode and the next decode.
     ///

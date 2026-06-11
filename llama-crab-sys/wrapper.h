@@ -17,6 +17,7 @@
 
 #if defined(LLAMA_CRAB_HAS_MTMD)
 #  include <mtmd.h>
+#  include <mtmd-helper.h>
 #  include "wrappers/mtmd_helpers.h"
 #endif
 

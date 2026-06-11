@@ -14,6 +14,26 @@ categories.workspace = true
 [lib]
 path = "src/lib.rs"
 
+# Integration tests live in `../tests/`. We disable Cargo's default file
+# auto-discovery (which would otherwise try to compile `tests/common.rs`
+# as its own test binary) and declare each integration test explicitly.
+autotests = false
+autobins = false
+
+[[test]]
+name = "gemma4_text"
+path = "../tests/gemma4_text.rs"
+
+[[test]]
+name = "gemma4_vision"
+path = "../tests/gemma4_vision.rs"
+required-features = ["mtmd"]
+
+[[test]]
+name = "lfm_vl_vision"
+path = "../tests/lfm_vl_vision.rs"
+required-features = ["mtmd"]
+
 [lints]
 workspace = true
 

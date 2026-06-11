@@ -47,7 +47,7 @@ pub fn create_completion(llama: &mut Llama, prompt: &str, max_tokens: usize) -> 
     let mut sampler = crate::sampling::LlamaSampler::greedy()
         .ok_or_else(|| LlamaError::Batch("sampler_init_greedy returned null".into()))?;
 
-    let ctx_ptr = llama.context().raw();
+    let ctx_ptr = llama.context().raw_handle();
     let eos = llama.model().token_eos();
     let mut generated = String::new();
     let mut last_pos = tokens.len() as i32;

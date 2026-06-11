@@ -211,10 +211,19 @@ fn run_bindgen(manifest_dir: &PathBuf, features: &Features) -> bindgen::Bindings
     }
 
     if features.mtmd {
+        eprintln!("cargo:warning=llama-crab-sys: mtmd feature enabled");
         builder = builder
+            .clang_arg("-DLLAMA_CRAB_HAS_MTMD")
             .clang_arg(format!("-I{}", llcpp.join("tools/mtmd").display()))
+            .clang_arg(format!("-I{}", llcpp.join("vendor").display()))
             .allowlist_function("mtmd_.*")
-            .allowlist_type("mtmd_.*");
+            .allowlist_function("mtmd_helper_.*")
+            .allowlist_type("mtmd_.*")
+            .allowlist_type("mtmd_input_chunk_type")
+            // Block C++ standard-library templates that bindgen can't express.
+            .blocklist_type("std___1__.*")
+            .blocklist_type("_Pointer")
+            .opaque_type("std::.*");
     }
 
     if features.llguidance {
@@ -436,6 +445,38 @@ fn build_cpp_wrappers(manifest_dir: &PathBuf, out_dir: &PathBuf, features: &Feat
         if path.is_file() {
             build.file(path);
             file_count += 1;
+        }
+        // The mtmd library itself (a C++ source tree under `tools/mtmd`).
+        // We add its sources directly via `cc::Build` (the parent CMake build
+        // skips it because `LLAMA_BUILD_TOOLS=OFF`).
+        let mtmd_dir = llcpp.join("tools/mtmd");
+        if mtmd_dir.is_dir() {
+            build.include(&mtmd_dir);
+            build.include(llcpp.join("vendor"));
+            // Recurse into the top-level tools/mtmd/ directory and the
+            // `models/` subdirectory so that model-specific vtables
+            // (granite4, gemma4, qwen2vl, …) are linked.
+            let mut dirs = vec![mtmd_dir.clone()];
+            let models_dir = mtmd_dir.join("models");
+            if models_dir.is_dir() {
+                build.include(&models_dir);
+                dirs.push(models_dir);
+            }
+            for dir in &dirs {
+                for entry in std::fs::read_dir(dir).unwrap().flatten() {
+                    let p = entry.path();
+                    if let Some(ext) = p.extension().and_then(|e| e.to_str()) {
+                        if matches!(ext, "cpp" | "c")
+                            && !p.file_name().and_then(|n| n.to_str()).map_or(false, |n| {
+                                n.contains("mtmd-cli") || n.contains("deprecation")
+                            })
+                        {
+                            build.file(&p);
+                            file_count += 1;
+                        }
+                    }
+                }
+            }
         }
     }
     if features.llguidance {
