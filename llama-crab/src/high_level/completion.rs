@@ -1,5 +1,7 @@
 //! Text completion driver.
 
+use serde_json::Value;
+
 use crate::error::{LlamaError, Result};
 
 use super::Llama;
@@ -78,4 +80,25 @@ pub fn create_completion(llama: &mut Llama, prompt: &str, max_tokens: usize) -> 
         n_tokens: n_generated,
         stop_reason,
     })
+}
+
+/// Create a GBNF grammar from a JSON Schema (used with `LlamaSampler::grammar`).
+///
+/// # Example
+///
+/// ```no_run
+/// use llama_crab::high_level::completion::json_schema_grammar;
+/// use serde_json::json;
+/// let grammar = json_schema_grammar(&json!({
+///     "type": "object",
+///     "properties": {
+///         "answer": { "type": "string" }
+///     },
+///     "required": ["answer"]
+/// })).unwrap();
+/// assert!(grammar.contains("root"));
+/// ```
+pub fn json_schema_grammar(schema: &Value) -> Result<String> {
+    crate::json_schema::schema_to_grammar(schema, "root")
+        .map_err(|e| LlamaError::JsonSchemaToGrammar(e.to_string()))
 }

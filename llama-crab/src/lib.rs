@@ -22,14 +22,19 @@ pub mod chat;
 pub mod context;
 pub mod error;
 pub mod high_level;
+pub mod json_schema;
 pub mod log;
 pub mod model;
-pub mod multimodal;
 pub mod sampling;
 pub mod speculative;
 pub mod token;
 pub mod token_data;
+pub mod tokenizer;
 pub mod util;
+
+#[cfg(feature = "mtmd")]
+#[cfg_attr(docsrs, doc(cfg(feature = "mtmd")))]
+pub mod multimodal;
 
 #[cfg(feature = "hf-tokenizer")]
 #[cfg_attr(docsrs, doc(cfg(feature = "hf-tokenizer")))]
@@ -48,3 +53,4 @@ pub use crate::model::{params::LlamaModelParams, LlamaModel};
 pub use crate::sampling::{LlamaSampler, SamplerChain};
 pub use crate::token::LlamaToken;
 pub use crate::token_data::{LlamaTokenData, LlamaTokenDataArray};
+pub use crate::tokenizer::{FimTokens, LlamaTokenizer, Tokenizer};
