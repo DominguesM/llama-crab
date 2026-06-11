@@ -1,0 +1,61 @@
+[workspace]
+resolver = "2"
+members = [
+    "llama-crab-sys",
+    "llama-crab",
+    "examples/simple",
+    "examples/chat",
+    "examples/embeddings",
+    "examples/reranker",
+    "examples/speculative",
+    "examples/tools",
+    "examples/structured",
+    "examples/mtmd",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.86"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/DominguesM/llama-crab"
+homepage = "https://github.com/DominguesM/llama-crab"
+authors = ["llama-crab contributors"]
+readme = "README.md"
+keywords = ["llama", "llm", "inference", "gguf", "ai"]
+categories = ["api-bindings", "science", "api-bindings::c"]
+description = "Safe, ergonomic and complete Rust bindings for llama.cpp"
+
+[workspace.lints.rust]
+missing_docs = "warn"
+missing_debug_implementations = "warn"
+unsafe_op_in_unsafe_fn = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+cast_possible_truncation = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+similar_names = "allow"
+struct_excessive_bools = "allow"
+too_many_arguments = "allow"
+too_many_lines = "allow"
+result_large_err = "allow"
+unnecessary_wraps = "allow"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+opt-level = 3
+debug = false
+strip = "debuginfo"
+
+[profile.dev]
+opt-level = 0
+debug = true
+incremental = true
