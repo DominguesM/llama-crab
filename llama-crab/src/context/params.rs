@@ -36,6 +36,7 @@ impl From<PoolingType> for sys::llama_pooling_type {
 /// Attention type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum AttentionType {
+    /// Unspecified — use the model's default.
     #[default]
     Unspecified,
     /// Standard causal attention.
@@ -165,22 +166,26 @@ impl LlamaContextParams {
         self
     }
 
+    /// Get the current pooling type.
     #[must_use]
     pub const fn pooling_type(&self) -> PoolingType {
         self.pooling_type
     }
 
+    /// Set the pooling type.
     #[must_use]
     pub const fn with_pooling_type(mut self, p: PoolingType) -> Self {
         self.pooling_type = p;
         self
     }
 
+    /// Get the current attention type.
     #[must_use]
     pub const fn attention_type(&self) -> AttentionType {
         self.attention_type
     }
 
+    /// Set the attention type.
     #[must_use]
     pub const fn with_attention_type(mut self, a: AttentionType) -> Self {
         self.attention_type = a;

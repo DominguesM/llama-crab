@@ -9,6 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
+  RUSTDOCFLAGS: -D warnings
 
 jobs:
   fmt:
@@ -48,11 +49,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libvulkan-dev
-          cargo clippy --workspace --all-features --all-targets -- -D warnings
+          cargo clippy -p llama-crab-sys --all-targets
+          cargo clippy -p llama-crab --all-features --all-targets
       - name: macOS
         if: matrix.os == 'macos-latest'
         run: |
-          cargo clippy --workspace --features metal --all-targets -- -D warnings
+          cargo clippy -p llama-crab-sys --all-targets
+          cargo clippy -p llama-crab --features metal,mtmd,disk-cache --all-targets
 
   build:
     name: Build (${{ matrix.os }}, ${{ matrix.features }})
@@ -110,7 +113,7 @@ jobs:
         run: cargo test --workspace --all-features
 
   doc:
-    name: Doc
+    name: Doc (strict)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -120,4 +123,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-      - run: cargo doc --workspace --all-features --no-deps
+      - run: cargo doc -p llama-crab --no-deps --all-features
+      - run: cargo doc -p llama-crab-sys --no-deps
+

@@ -13,10 +13,8 @@ categories.workspace = true
 
 [lib]
 path = "src/lib.rs"
-
-# Integration tests live in `../tests/`. We disable Cargo's default file
-# auto-discovery (which would otherwise try to compile `tests/common.rs`
-# as its own test binary) and declare each integration test explicitly.
+# Disable Cargo's default file auto-discovery in `../tests/` and
+# declare each integration test explicitly below.
 autotests = false
 autobins = false
 

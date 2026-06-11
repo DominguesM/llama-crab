@@ -49,6 +49,11 @@ too_many_lines = "allow"
 result_large_err = "allow"
 unnecessary_wraps = "allow"
 
+# The sys crate exposes bindgen-generated bindings, which don't have
+# rustdoc and generate many false-positive `missing_docs` warnings. We
+# relax that lint at the workspace level and require it again only in
+# the safe crate.
+
 [profile.release]
 lto = "thin"
 codegen-units = 1

@@ -4,7 +4,7 @@
 //!
 //! * [`RamCache`] — in-process, LRU-ish prefix cache backed by a
 //!   `BTreeMap`.
-//! * [`DiskCache`] — on-disk, persisted via the `sled` embedded
+//! * `DiskCache` — on-disk, persisted via the `sled` embedded
 //!   key-value store (feature `disk-cache`).
 //!
 //! Both store raw bytes produced by `llama_state_get_data`; the keys

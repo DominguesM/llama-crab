@@ -55,7 +55,7 @@ pub struct ChatMessage {
     /// Role (system/user/assistant/tool).
     pub role: Role,
     /// Textual content. Multimodal content is supported by
-    /// [`crate::multimodal`].
+    /// `crate::multimodal` (feature `mtmd`).
     pub content: String,
     /// Optional tool call id (only meaningful when `role == Tool`).
     #[serde(default, skip_serializing_if = "Option::is_none")]

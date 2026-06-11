@@ -6,7 +6,9 @@
 //!     * `name` (lookup of a variable)
 //!     * `name.attr` (attribute access — converted to `name["attr"]`)
 //!     * `name["key"]` (subscript)
-//!     * `name | filter` (filter; see [`filters`])
+//!     * `name | filter` (filter; built-in filters include `length`,
+//!       `upper`, `lower`, `trim`, `default`, `tojson`, `string`,
+//!       `int`, `abs`)
 //! * `{% if cond %}...{% elif ... %}...{% else %}...{% endif %}`
 //! * `{% for x in items %}...{% endfor %}`
 //! * `{% set name = expr %}`
@@ -874,31 +876,28 @@ impl<'a> Parser<'a> {
     }
     fn parse_compare(&mut self) -> Result<Expr, TemplateError> {
         let left = self.parse_add()?;
-        loop {
-            self.skip_ws();
-            let op = if self.consume_str("==") {
-                BinOp::Eq
-            } else if self.consume_str("!=") {
-                BinOp::Ne
-            } else if self.consume_str("<=") {
-                BinOp::Le
-            } else if self.consume_str(">=") {
-                BinOp::Ge
-            } else if self.consume_str("<") {
-                BinOp::Lt
-            } else if self.consume_str(">") {
-                BinOp::Gt
-            } else if self.consume_str(" in ") {
-                let right = self.parse_add()?;
-                return Ok(Expr::In(Box::new(left), Box::new(right)));
-            } else {
-                break;
-            };
-            self.skip_ws();
+        self.skip_ws();
+        let op = if self.consume_str("==") {
+            BinOp::Eq
+        } else if self.consume_str("!=") {
+            BinOp::Ne
+        } else if self.consume_str("<=") {
+            BinOp::Le
+        } else if self.consume_str(">=") {
+            BinOp::Ge
+        } else if self.consume_str("<") {
+            BinOp::Lt
+        } else if self.consume_str(">") {
+            BinOp::Gt
+        } else if self.consume_str(" in ") {
             let right = self.parse_add()?;
-            return Ok(Expr::BinOp(op, Box::new(left), Box::new(right)));
-        }
-        Ok(left)
+            return Ok(Expr::In(Box::new(left), Box::new(right)));
+        } else {
+            return Ok(left);
+        };
+        self.skip_ws();
+        let right = self.parse_add()?;
+        Ok(Expr::BinOp(op, Box::new(left), Box::new(right)))
     }
     fn parse_add(&mut self) -> Result<Expr, TemplateError> {
         let mut left = self.parse_mul()?;

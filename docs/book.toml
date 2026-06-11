@@ -1,0 +1,33 @@
+[book]
+title = "llama-crab"
+authors = ["llama-crab contributors"]
+language = "en"
+multilingual = false
+src = "src"
+description = "Safe, ergonomic Rust bindings to llama.cpp"
+
+[output.html]
+default-theme = "rust"
+git-repository-url = "https://github.com/DominguesM/llama-crab"
+edit-url-template = "https://github.com/DominguesM/llama-crab/edit/main/docs/{path}"
+site-url = "/llama-crab/"
+
+[output.html.fold]
+enable = true
+level = 1
+
+[output.html.playground]
+editable = false
+copyable = true
+copy-js = true
+line-numbers = true
+
+[output.html.search]
+enable = true
+limit-results = 20
+use-boolean-and = true
+boost-title = 2
+boost-hierarchy = 1
+boost-paragraph = 1
+expand = true
+heading-split-level = 3

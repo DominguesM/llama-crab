@@ -91,7 +91,11 @@ impl DraftModel for PromptLookupDecoding {
 ///    of the draft matching the sampled tokens.
 /// 4. The first *rejected* draft token is replaced by the sampled one,
 ///    and decoding continues from there.
-pub fn speculative_decode<M: DraftModel>(
+///
+/// # Safety
+/// `main_ctx` must point to a live, unaliased `llama_context` owned
+/// exclusively by the caller for the duration of this call.
+pub unsafe fn speculative_decode<M: DraftModel>(
     main_ctx: *mut llama_crab_sys::llama_context,
     main_sampler: &mut crate::sampling::LlamaSampler,
     draft_model: &M,
