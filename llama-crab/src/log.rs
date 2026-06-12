@@ -23,7 +23,7 @@ pub struct LogOptions {
 pub fn send_logs_to_tracing(opts: LogOptions) {
     let _ = opts;
     let cb: sys::ggml_log_callback = Some(noop_log);
-    let _ = unsafe { sys::llama_log_set(cb, std::ptr::null_mut()) };
+    unsafe { sys::llama_log_set(cb, std::ptr::null_mut()) };
 }
 
 unsafe extern "C" fn noop_log(

@@ -4,6 +4,7 @@ use llama_crab_sys as sys;
 
 /// Strategy for splitting a model across multiple GPUs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[allow(dead_code)]
 pub enum SplitMode {
     /// Single-GPU / no splitting.
     None,
@@ -50,6 +51,7 @@ impl Default for LlamaModelParams {
                 sys::llama_split_mode::LLAMA_SPLIT_MODE_LAYER => SplitMode::Layer,
                 sys::llama_split_mode::LLAMA_SPLIT_MODE_ROW => SplitMode::Row,
                 sys::llama_split_mode::LLAMA_SPLIT_MODE_TENSOR => SplitMode::Tensor,
+                #[allow(unreachable_patterns)]
                 _ => SplitMode::Layer,
             },
             main_gpu: raw.main_gpu,

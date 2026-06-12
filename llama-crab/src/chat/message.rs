@@ -101,5 +101,56 @@ impl ChatMessage {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::chat::tool_call::ToolCall;
+    use serde_json::json;
+    use std::str::FromStr;
+
+    #[test]
+    fn new_constructs() {
+        let m = ChatMessage::new(Role::User, "hi");
+        assert_eq!(m.role, Role::User);
+        assert_eq!(m.content, "hi");
+        assert!(m.tool_call_id.is_none());
+        assert!(m.tool_calls.is_empty());
+        assert!(m.name.is_none());
+    }
+
+    #[test]
+    fn tool_result_constructs() {
+        let m = ChatMessage::tool_result("call_1", "ok");
+        assert_eq!(m.role, Role::Tool);
+        assert_eq!(m.tool_call_id.as_deref(), Some("call_1"));
+        assert_eq!(m.content, "ok");
+    }
+
+    #[test]
+    fn with_tool_call_appends() {
+        let c = ToolCall::new("id_1", "f", json!({}));
+        let m = ChatMessage::new(Role::Assistant, "x").with_tool_call(c.clone());
+        assert_eq!(m.tool_calls.len(), 1);
+        assert_eq!(m.tool_calls[0].id, "id_1");
+    }
+
+    #[test]
+    fn role_from_str() {
+        assert_eq!(Role::from_str("system").unwrap(), Role::System);
+        assert_eq!(Role::from_str("user").unwrap(), Role::User);
+        assert_eq!(Role::from_str("assistant").unwrap(), Role::Assistant);
+        assert_eq!(Role::from_str("tool").unwrap(), Role::Tool);
+        assert!(Role::from_str("nope").is_err());
+    }
+
+    #[test]
+    fn role_serialize_round_trip() {
+        let json = serde_json::to_string(&Role::User).unwrap();
+        assert_eq!(json, "\"user\"");
+        let r: Role = serde_json::from_str("\"assistant\"").unwrap();
+        assert_eq!(r, Role::Assistant);
+    }
+}
+
 // Avoid orphan-rule violations; we need `ToolCall` in scope.
 use crate::chat::tool_call::ToolCall;

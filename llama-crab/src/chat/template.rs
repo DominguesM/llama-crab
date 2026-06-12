@@ -1449,6 +1449,116 @@ mod tests {
     }
 
     #[test]
+    fn builtin_alpaca() {
+        let p = render_builtin(
+            BuiltinTemplate::Alpaca,
+            &[ChatMessage::new(Role::User, "Hi")],
+            &[],
+            true,
+        );
+        assert!(p.contains("### Response:"));
+    }
+
+    #[test]
+    fn builtin_vicuna() {
+        let p = render_builtin(
+            BuiltinTemplate::Vicuna,
+            &[ChatMessage::new(Role::User, "Hi")],
+            &[],
+            true,
+        );
+        assert!(p.contains("ASSISTANT:"));
+    }
+
+    #[test]
+    fn builtin_openchat() {
+        let p = render_builtin(
+            BuiltinTemplate::OpenChat,
+            &[ChatMessage::new(Role::User, "Hi")],
+            &[],
+            true,
+        );
+        assert!(p.contains("<|start|>assistant<|message|>"));
+    }
+
+    #[test]
+    fn builtin_zephyr() {
+        let p = render_builtin(
+            BuiltinTemplate::Zephyr,
+            &[ChatMessage::new(Role::User, "Hi")],
+            &[],
+            true,
+        );
+        assert!(p.contains("<|assistant|>"));
+    }
+
+    #[test]
+    fn builtin_phi3() {
+        let p = render_builtin(
+            BuiltinTemplate::Phi3,
+            &[ChatMessage::new(Role::User, "Hi")],
+            &[],
+            true,
+        );
+        assert!(p.contains("<|assistant|>"));
+    }
+
+    #[test]
+    fn builtin_command_r() {
+        let p = render_builtin(
+            BuiltinTemplate::CommandR,
+            &[ChatMessage::new(Role::User, "Hi")],
+            &[],
+            true,
+        );
+        assert!(p.contains("<|CHATBOT_TOKEN|>"));
+    }
+
+    #[test]
+    fn builtin_deepseek() {
+        let p = render_builtin(
+            BuiltinTemplate::DeepSeek,
+            &[ChatMessage::new(Role::User, "Hi")],
+            &[],
+            true,
+        );
+        assert!(p.contains("User: Hi"));
+    }
+
+    #[test]
+    fn builtin_granite() {
+        let p = render_builtin(
+            BuiltinTemplate::Granite,
+            &[ChatMessage::new(Role::User, "Hi")],
+            &[],
+            true,
+        );
+        assert!(p.contains("<|start_of_role|>assistant<|end_of_role|>"));
+    }
+
+    #[test]
+    fn builtin_oasst() {
+        let p = render_builtin(
+            BuiltinTemplate::OpenAssistant,
+            &[ChatMessage::new(Role::User, "Hi")],
+            &[],
+            true,
+        );
+        assert!(p.contains("### Assistant:"));
+    }
+
+    #[test]
+    fn builtin_mistral_instruct() {
+        let p = render_builtin(
+            BuiltinTemplate::MistralInstruct,
+            &[ChatMessage::new(Role::User, "Hi")],
+            &[],
+            true,
+        );
+        assert!(p.contains("[INST]"));
+    }
+
+    #[test]
     fn builtin_name_parse() {
         assert_eq!(BuiltinTemplate::from_str_ci("gemma-4"), Some(BuiltinTemplate::Gemma));
         assert_eq!(BuiltinTemplate::from_str_ci("LLAMA-3"), Some(BuiltinTemplate::Llama3));

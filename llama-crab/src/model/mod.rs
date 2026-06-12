@@ -1,6 +1,9 @@
 //! `LlamaModel` and its parameters.
 
+pub mod buft_overrides;
+pub mod kv_overrides;
 pub mod params;
+pub mod vocab;
 
 use std::path::Path;
 use std::ptr::NonNull;
@@ -12,15 +15,9 @@ use crate::context::{LlamaContext, LlamaContextParams};
 use crate::error::{LlamaError, Result};
 use crate::token::LlamaToken;
 
-/// Cached `*const llama_vocab` so that callers don't need to repeatedly
-/// re-fetch the vocab from the model. The pointer is valid for the lifetime
-/// of the model that produced it (see `llama_model_get_vocab`).
-#[derive(Debug, Clone, Copy)]
-struct VocabPtr(NonNull<sys::llama_vocab>);
-
-// Safety: `llama_vocab` is read-only and thread-safe per llama.cpp docs.
-unsafe impl Send for VocabPtr {}
-unsafe impl Sync for VocabPtr {}
+pub use buft_overrides::BufferTypeOverride;
+pub use kv_overrides::ParamOverrideValue;
+pub(crate) use vocab::VocabPtr;
 
 /// A loaded GGUF model.
 #[derive(Debug)]

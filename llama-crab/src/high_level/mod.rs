@@ -6,11 +6,21 @@
 
 pub mod chat_completion;
 pub mod completion;
+pub mod embedding;
+pub mod hf_tokenizer;
+pub mod infill;
+pub mod rerank;
+pub mod tokenizer;
+
+#[cfg(feature = "hf-tokenizer")]
+#[cfg_attr(docsrs, doc(cfg(feature = "hf-tokenizer")))]
+pub use self::hf_tokenizer::HfTokenizer;
+
+pub use self::tokenizer::{FimTokens, LlamaTokenizer, Tokenizer};
 
 use std::path::{Path, PathBuf};
 
 use crate::backend::LlamaBackend;
-use crate::chat::Role;
 use crate::context::{LlamaContext, LlamaContextParams};
 use crate::error::Result;
 use crate::model::LlamaModel;

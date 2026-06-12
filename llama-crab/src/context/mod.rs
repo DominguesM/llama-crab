@@ -1,7 +1,9 @@
 //! `LlamaContext` and its parameters.
 
 pub mod embeddings;
+pub mod kv_cache;
 pub mod params;
+pub mod sampling_state;
 pub mod session;
 
 use std::ptr::NonNull;

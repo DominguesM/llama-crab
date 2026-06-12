@@ -34,7 +34,10 @@ unsafe_op_in_unsafe_fn = "warn"
 rust_2018_idioms = { level = "warn", priority = -1 }
 
 [workspace.lints.clippy]
-pedantic = { level = "warn", priority = -1 }
+# We use the default `clippy` lint set + a curated allow-list for the
+# most pedantic lints. The safe crate enforces its own stricter rules
+# in `src/lib.rs` via `#![deny(...)]` annotations.
+all = { level = "warn", priority = -1 }
 module_name_repetitions = "allow"
 must_use_candidate = "allow"
 missing_errors_doc = "allow"
@@ -42,17 +45,27 @@ missing_panics_doc = "allow"
 cast_possible_truncation = "allow"
 cast_precision_loss = "allow"
 cast_sign_loss = "allow"
+cast_possible_wrap = "allow"
 similar_names = "allow"
 struct_excessive_bools = "allow"
 too_many_arguments = "allow"
 too_many_lines = "allow"
 result_large_err = "allow"
 unnecessary_wraps = "allow"
-
-# The sys crate exposes bindgen-generated bindings, which don't have
-# rustdoc and generate many false-positive `missing_docs` warnings. We
-# relax that lint at the workspace level and require it again only in
-# the safe crate.
+redundant_closure = "allow"
+needless_pass_by_value = "allow"
+unused_self = "allow"
+useless_format = "allow"
+option_if_let_else = "allow"
+manual_let_else = "allow"
+single_match = "allow"
+single_match_else = "allow"
+match_wild_err_arm = "allow"
+match_same_arms = "allow"
+uninlined_format_args = "allow"
+use_self = "allow"
+wrong_self_convention = "allow"
+needless_collect = "allow"
 
 [profile.release]
 lto = "thin"

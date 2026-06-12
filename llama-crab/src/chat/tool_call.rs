@@ -406,10 +406,6 @@ mod tests {
 
     #[test]
     fn parse_chatml() {
-        let s = r#"<tool_call>
-            {"name": "get_weather", "arguments": {"city": "Tokyo"}}
-        <function_calls>"#;
-        // Above text mixes wrapping styles; use a clean one.
         let s = r#"<tool_call>{"name": "get_weather", "arguments": {"city": "Tokyo"}}</tool_call>"#;
         let mut p = ToolParser::new(ToolFormat::ChatMl);
         let calls: Vec<_> = p.feed(s).into_iter().filter_map(|r| r.ok()).collect();

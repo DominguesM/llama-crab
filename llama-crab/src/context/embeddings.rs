@@ -1,7 +1,7 @@
 //! Embedding extraction.
 //!
-//! Use [`LlamaContext::embeddings`] to obtain the embedding of the last
-//! decoded sequence, or [`LlamaContext::embeddings_ith`] for a specific
+//! Use the `embeddings` method on `LlamaContext` to obtain the embedding
+//! of the last decoded sequence, or `embeddings_ith` for a specific
 //! sequence id.
 
 use crate::context::LlamaContext;

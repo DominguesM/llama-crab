@@ -28,6 +28,7 @@ pub trait Tokenizer {
 }
 
 /// Tokenizer that delegates to a loaded [`LlamaModel`].
+#[derive(Debug)]
 pub struct LlamaTokenizer<'a> {
     model: &'a LlamaModel,
 }

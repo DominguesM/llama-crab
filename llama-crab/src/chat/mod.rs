@@ -20,6 +20,7 @@
 //! ```
 
 pub mod message;
+pub mod parser;
 pub mod template;
 pub mod tool_call;
 
@@ -27,6 +28,7 @@ pub mod tool_call;
 pub mod oaicompat;
 
 pub use message::{ChatMessage, Role};
+pub use parser::ChatParseState;
 pub use template::{
     detect_chat_format, render_builtin, render_template, BuiltinTemplate, TemplateError,
 };

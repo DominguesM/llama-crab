@@ -576,4 +576,101 @@ mod tests {
         let g = json_object_grammar();
         assert!(g.starts_with("root ::="));
     }
+
+    #[test]
+    fn any_value_grammar_is_valid() {
+        let g = any_value_grammar();
+        assert!(g.contains("root ::="));
+    }
+
+    #[test]
+    fn additional_properties_schema() {
+        let s = json!({
+            "type": "object",
+            "properties": {"a": {"type": "integer"}},
+            "additionalProperties": true
+        });
+        let g = schema_to_grammar(&s, "root").unwrap();
+        assert!(g.contains("root"));
+    }
+
+    #[test]
+    fn format_datetime() {
+        let s = json!({"type": "string", "format": "date-time"});
+        let g = schema_to_grammar(&s, "root").unwrap();
+        assert!(g.contains("date-time-"));
+    }
+
+    #[test]
+    fn format_uri() {
+        let s = json!({"type": "string", "format": "uri"});
+        let g = schema_to_grammar(&s, "root").unwrap();
+        assert!(g.contains("uri-"));
+    }
+
+    #[test]
+    fn format_uuid() {
+        let s = json!({"type": "string", "format": "uuid"});
+        let g = schema_to_grammar(&s, "root").unwrap();
+        assert!(g.contains("uuid-"));
+    }
+
+    #[test]
+    fn pattern_schema() {
+        let s = json!({"type": "string", "pattern": "^[a-z]+$"});
+        let g = schema_to_grammar(&s, "root").unwrap();
+        assert!(g.contains("pattern"));
+    }
+
+    #[test]
+    fn min_max_length() {
+        let s = json!({"type": "string", "minLength": 1, "maxLength": 10});
+        let g = schema_to_grammar(&s, "root").unwrap();
+        assert!(g.contains("root"));
+    }
+
+    #[test]
+    fn all_of_schema() {
+        let s = json!({
+            "allOf": [
+                {"type": "object", "properties": {"a": {"type": "string"}}},
+                {"type": "object", "properties": {"b": {"type": "integer"}}}
+            ]
+        });
+        let g = schema_to_grammar(&s, "root").unwrap();
+        assert!(g.contains("all-"));
+    }
+
+    #[test]
+    fn one_of_schema() {
+        let s = json!({
+            "oneOf": [
+                {"type": "integer"},
+                {"type": "boolean"}
+            ]
+        });
+        let g = schema_to_grammar(&s, "root").unwrap();
+        assert!(g.contains("alt-"));
+    }
+
+    #[test]
+    fn boolean_schema() {
+        let s = json!({"type": "boolean"});
+        let g = schema_to_grammar(&s, "root").unwrap();
+        assert!(g.contains("true") || g.contains("false"));
+    }
+
+    #[test]
+    fn null_schema() {
+        let s = json!({"type": "null"});
+        let g = schema_to_grammar(&s, "root").unwrap();
+        assert!(g.contains("null"));
+    }
+
+    #[test]
+    fn integer_with_range() {
+        let s = json!({"type": "integer", "minimum": 0, "maximum": 100});
+        let g = schema_to_grammar(&s, "root").unwrap();
+        assert!(g.contains("root"));
+    }
 }
