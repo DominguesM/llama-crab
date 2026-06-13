@@ -7,6 +7,7 @@ members = [
     "examples/stateful_chat",
     "examples/embedding_search",
     "examples/simple",
+    "examples/streaming",
     "examples/chat",
     "examples/embeddings",
     "examples/reranker",
@@ -19,7 +20,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.201"
+version = "0.1.300"
 edition = "2021"
 rust-version = "1.88"
 license = "MIT"
