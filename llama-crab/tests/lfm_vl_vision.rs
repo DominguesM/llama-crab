@@ -120,7 +120,7 @@ fn lfm_vl_vision_question_answering() {
         if let Ok(piece) = llama.model().detokenize(&[tok], false) {
             out.push_str(&piece);
         }
-        let single = LlamaBatch::one(tok, new_n_past + n_generated as i32, 0, true);
+        let single = LlamaBatch::one(tok, new_n_past + n_generated, 0, true);
         llama
             .context()
             .decode(&single)
