@@ -4,10 +4,10 @@
 [`llama.cpp`](https://github.com/ggml-org/llama.cpp). It exposes two
 crates:
 
-| Crate            | Purpose                                                   |
-|------------------|-----------------------------------------------------------|
-| `llama-crab-sys` | Raw FFI generated via `bindgen` over `wrapper.h` + cmake  |
-| `llama-crab`     | 100% safe-Rust API: model loading, sampling, chat, …      |
+| Crate            | Purpose                                                  |
+| ---------------- | -------------------------------------------------------- |
+| `llama-crab-sys` | Raw FFI generated via `bindgen` over `wrapper.h` + cmake |
+| `llama-crab`     | 100% safe-Rust API: model loading, sampling, chat, …     |
 
 `llama-crab` is built with three goals in mind:
 
@@ -17,11 +17,11 @@ crates:
 
 ## What you can build with it
 
-* Local assistants, REPLs, and CLI tools
-* Embedding-based retrieval systems
-* Speculative-decoding servers
-* Vision-language agents (with the `mtmd` feature)
-* Tools that emit structured JSON (with the GBNF-grammar sampler)
+- Local assistants, REPLs, and CLI tools
+- Embedding-based retrieval systems
+- Speculative-decoding servers
+- Vision-language agents (with the `mtmd` feature)
+- Tools that emit structured JSON (with the GBNF-grammar sampler)
 
 ## Quickstart
 

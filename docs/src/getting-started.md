@@ -18,20 +18,20 @@ llama-crab = { version = "0.1", default-features = false, features = ["cuda", "o
 
 ### Available features
 
-| Feature           | What it does                                       |
-|-------------------|----------------------------------------------------|
-| `openmp`          | CPU parallel backend                               |
-| `metal`           | Apple GPU (default on macOS aarch64)                |
-| `cuda`            | NVIDIA CUDA                                        |
-| `vulkan`          | Vulkan / SPIR-V                                    |
-| `rocm`            | AMD ROCm/HIP                                      |
-| `mtmd`            | Vision + audio (multimodal) support                |
-| `llguidance`      | `llguidance` grammar sampler                       |
-| `hf-tokenizer`    | HuggingFace `tokenizers` crate integration         |
-| `disk-cache`      | `sled`-backed persistent KV cache                 |
-| `dynamic-link`    | Link llama.cpp as a shared object                   |
-| `dynamic-backends`| Load GGML backends as shared objects               |
-| `system-ggml`     | Use the system GGML instead of the bundled copy    |
+| Feature            | What it does                                    |
+| ------------------ | ----------------------------------------------- |
+| `openmp`           | CPU parallel backend                            |
+| `metal`            | Apple GPU (default on macOS aarch64)            |
+| `cuda`             | NVIDIA CUDA                                     |
+| `vulkan`           | Vulkan / SPIR-V                                 |
+| `rocm`             | AMD ROCm/HIP                                    |
+| `mtmd`             | Vision + audio (multimodal) support             |
+| `llguidance`       | `llguidance` grammar sampler                    |
+| `hf-tokenizer`     | HuggingFace `tokenizers` crate integration      |
+| `disk-cache`       | `sled`-backed persistent KV cache               |
+| `dynamic-link`     | Link llama.cpp as a shared object               |
+| `dynamic-backends` | Load GGML backends as shared objects            |
+| `system-ggml`      | Use the system GGML instead of the bundled copy |
 
 ## First program
 

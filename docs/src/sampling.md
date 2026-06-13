@@ -6,26 +6,26 @@ compose them.
 
 ## Strategies
 
-| Strategy                  | Purpose                                                     |
-|---------------------------|-------------------------------------------------------------|
-| `LlamaSampler::greedy()`  | Always pick the highest-probability token.                  |
-| `LlamaSampler::dist(seed)`| Uniform random sampling.                                   |
-| `LlamaSampler::top_k(k)`  | Restrict to the top K tokens.                               |
-| `LlamaSampler::top_p(p, min_keep)` | Nucleus sampling.                                  |
-| `LlamaSampler::min_p(p, min_keep)` | Min-P sampling.                                   |
-| `LlamaSampler::typical(p, min_keep)` | Locally-typical sampling.                        |
-| `LlamaSampler::temp(t)`   | Temperature scaling.                                        |
-| `LlamaSampler::temp_ext(t, delta, exp)` | Dynamic temperature.                          |
-| `LlamaSampler::xtc(p, t, min_keep, seed)` | Exclude top choices.                          |
-| `LlamaSampler::top_n_sigma(n)` | Top-N-Sigma.                                            |
-| `LlamaSampler::mirostat(n_vocab, seed, tau, eta, m)` | Mirostat v1.                  |
-| `LlamaSampler::mirostat_v2(seed, tau, eta)` | Mirostat v2.                                  |
-| `LlamaSampler::penalties(...)` | Repetition / frequency / presence penalties.            |
-| `LlamaSampler::dry(model, ...)` | "Don't Repeat Yourself" sampler.                        |
-| `LlamaSampler::adaptive_p(target, decay, seed)` | Adaptive-P probabilistic.            |
-| `LlamaSampler::logit_bias(n_vocab, biases)` | Manual logit-bias.                            |
-| `LlamaSampler::infill(model)` | Code-infill sampler (FIM).                            |
-| `LlamaSampler::grammar(model, ...)` *(feature `common`)* | GBNF-constrained sampling.  |
+| Strategy                                                 | Purpose                                      |
+| -------------------------------------------------------- | -------------------------------------------- |
+| `LlamaSampler::greedy()`                                 | Always pick the highest-probability token.   |
+| `LlamaSampler::dist(seed)`                               | Uniform random sampling.                     |
+| `LlamaSampler::top_k(k)`                                 | Restrict to the top K tokens.                |
+| `LlamaSampler::top_p(p, min_keep)`                       | Nucleus sampling.                            |
+| `LlamaSampler::min_p(p, min_keep)`                       | Min-P sampling.                              |
+| `LlamaSampler::typical(p, min_keep)`                     | Locally-typical sampling.                    |
+| `LlamaSampler::temp(t)`                                  | Temperature scaling.                         |
+| `LlamaSampler::temp_ext(t, delta, exp)`                  | Dynamic temperature.                         |
+| `LlamaSampler::xtc(p, t, min_keep, seed)`                | Exclude top choices.                         |
+| `LlamaSampler::top_n_sigma(n)`                           | Top-N-Sigma.                                 |
+| `LlamaSampler::mirostat(n_vocab, seed, tau, eta, m)`     | Mirostat v1.                                 |
+| `LlamaSampler::mirostat_v2(seed, tau, eta)`              | Mirostat v2.                                 |
+| `LlamaSampler::penalties(...)`                           | Repetition / frequency / presence penalties. |
+| `LlamaSampler::dry(model, ...)`                          | "Don't Repeat Yourself" sampler.             |
+| `LlamaSampler::adaptive_p(target, decay, seed)`          | Adaptive-P probabilistic.                    |
+| `LlamaSampler::logit_bias(n_vocab, biases)`              | Manual logit-bias.                           |
+| `LlamaSampler::infill(model)`                            | Code-infill sampler (FIM).                   |
+| `LlamaSampler::grammar(model, ...)` _(feature `common`)_ | GBNF-constrained sampling.                   |
 
 ## Composing a chain
 

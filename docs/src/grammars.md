@@ -32,17 +32,17 @@ Then plug the grammar into your sampler chain:
 
 ## Supported JSON-Schema features
 
-* `type`: `object`, `array`, `string`, `integer`, `number`, `boolean`, `null`
-* `properties`, `required`, `additionalProperties` (with sub-schema)
-* `items` (single-schema) and `prefixItems`/`minItems`/`maxItems`
-* `enum` (string / integer / boolean / null)
-* `const`
-* `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`
-* `minLength`, `maxLength`, `pattern`
-* `format`: `date-time`, `email`, `uri`, `uuid`
-* `oneOf`, `anyOf`, `allOf`
-* `$ref` (local, `#/definitions/...` style)
-* `definitions` and `$defs`
+- `type`: `object`, `array`, `string`, `integer`, `number`, `boolean`, `null`
+- `properties`, `required`, `additionalProperties` (with sub-schema)
+- `items` (single-schema) and `prefixItems`/`minItems`/`maxItems`
+- `enum` (string / integer / boolean / null)
+- `const`
+- `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`
+- `minLength`, `maxLength`, `pattern`
+- `format`: `date-time`, `email`, `uri`, `uuid`
+- `oneOf`, `anyOf`, `allOf`
+- `$ref` (local, `#/definitions/...` style)
+- `definitions` and `$defs`
 
 ## Custom grammars
 
