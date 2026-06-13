@@ -62,21 +62,27 @@ jobs:
         include:
           - name: linux-openmp
             os: ubuntu-latest
+            sys-features: openmp
             features: openmp
           - name: linux-vulkan
             os: ubuntu-latest
+            sys-features: openmp,vulkan
             features: openmp,vulkan
           - name: linux-mtmd
             os: ubuntu-latest
+            sys-features: openmp,mtmd
             features: openmp,mtmd,disk-cache
           - name: macos-metal
             os: macos-latest
+            sys-features: metal
             features: metal
           - name: macos-mtmd
             os: macos-latest
+            sys-features: metal,mtmd
             features: metal,mtmd,disk-cache
           - name: windows-minimal
             os: windows-latest
+            sys-features: ""
             features: ""
     steps:
       - uses: actions/checkout@v4
@@ -90,12 +96,12 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && contains(matrix.features, 'vulkan')
         run: |
           sudo apt-get update
-          sudo apt-get install -y libvulkan-dev mesa-vulkan-drivers vulkan-tools
+          sudo apt-get install -y glslang-tools glslc libvulkan-dev mesa-vulkan-drivers spirv-headers spirv-tools vulkan-tools
       - name: Build workspace
         shell: bash
         run: |
           if [ -n "${{ matrix.features }}" ]; then
-            cargo build -p llama-crab-sys --no-default-features --features "${{ matrix.features }}"
+            cargo build -p llama-crab-sys --no-default-features --features "${{ matrix.sys-features }}"
             cargo build -p llama-crab --no-default-features --features "${{ matrix.features }}"
           else
             cargo build -p llama-crab-sys --no-default-features

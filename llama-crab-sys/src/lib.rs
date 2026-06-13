@@ -1,6 +1,6 @@
 //! Low-level FFI bindings to `llama.cpp`.
 //!
-//! Generated at build time via [`bindgen`] over `wrapper.h`, which in turn
+//! Generated at build time via [`bindgen`](https://docs.rs/bindgen) over `wrapper.h`, which in turn
 //! includes the public C headers of `llama.cpp`, `ggml` and `gguf`.
 //!
 //! This crate is **unsafe by design**: every public item is a thin
@@ -33,6 +33,8 @@
 #![allow(non_snake_case)]
 #![allow(non_upper_case_globals)]
 #![allow(missing_docs)]
+#![allow(rustdoc::bare_urls)]
+#![allow(rustdoc::broken_intra_doc_links)]
 #![allow(clippy::all)]
 #![allow(unpredictable_function_pointer_comparisons)]
 
