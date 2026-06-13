@@ -29,7 +29,10 @@ fn main() -> Result<()> {
     ]);
 
     let messages = vec![
-        ChatMessage::new(Role::System, "You can call functions. Format: {\"name\": \"...\", \"arguments\": {...}}"),
+        ChatMessage::new(
+            Role::System,
+            "You can call functions. Format: {\"name\": \"...\", \"arguments\": {...}}",
+        ),
         ChatMessage::new(Role::User, "What's the weather in Tokyo?"),
     ];
     let resp = llama.create_chat_completion(&messages, 64)?;

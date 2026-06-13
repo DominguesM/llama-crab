@@ -6,7 +6,9 @@ fn main() -> Result<()> {
     let model = std::env::args()
         .nth(1)
         .ok_or_else(|| anyhow::anyhow!("usage: embeddings <model.gguf> [text]"))?;
-    let text = std::env::args().nth(2).unwrap_or_else(|| "Hello, world!".into());
+    let text = std::env::args()
+        .nth(2)
+        .unwrap_or_else(|| "Hello, world!".into());
 
     let llama = Llama::load(
         LlamaParams::new(&model)

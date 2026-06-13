@@ -30,8 +30,7 @@ Load a GGUF model and generate text:
 use llama_crab::{Llama, LlamaParams};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let llama = Llama::load(LlamaParams::default()
-        .with_model_path("models/llama-3.1-8b-instruct-q4_k_m.gguf")
+    let mut llama = Llama::load(LlamaParams::new("models/llama-3.1-8b-instruct-q4_k_m.gguf")
         .with_n_ctx(2048)
         .with_n_gpu_layers(99))?;
 
@@ -40,6 +39,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
+
+## Examples
+
+The repo ships with 12 runnable examples in [`examples/`](examples/README.md):
+
+```bash
+./examples/run.sh quickstart          # ~400 MB — text only, smallest demo
+./examples/run.sh chat                # same model — interactive REPL
+./examples/run.sh embeddings          # ~30 MB  — BGE-small + cosine ranking
+./examples/run.sh vision gemma4       # ~5 GB   — vision + text chat
+./examples/run.sh vision lfm-vl       # ~1 GB   — smaller vision model
+./examples/run.sh tools               # function calling
+./examples/run.sh structured          # JSON-schema constrained decoding
+```
+
+`./examples/run.sh` downloads the right GGUF(s) on first run and is
+idempotent afterwards. See [`examples/README.md`](examples/README.md)
+for the full table, manual commands, and how to plug in your own
+GGUF.
 
 ## Feature matrix
 
