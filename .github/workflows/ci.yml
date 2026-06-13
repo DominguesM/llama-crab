@@ -62,21 +62,27 @@ jobs:
         include:
           - name: linux-openmp
             os: ubuntu-latest
+            sys-features: openmp
             features: openmp
           - name: linux-vulkan
             os: ubuntu-latest
+            sys-features: openmp,vulkan
             features: openmp,vulkan
           - name: linux-mtmd
             os: ubuntu-latest
+            sys-features: openmp,mtmd
             features: openmp,mtmd,disk-cache
           - name: macos-metal
             os: macos-latest
+            sys-features: metal
             features: metal
           - name: macos-mtmd
             os: macos-latest
+            sys-features: metal,mtmd
             features: metal,mtmd,disk-cache
           - name: windows-minimal
             os: windows-latest
+            sys-features: ""
             features: ""
     steps:
       - uses: actions/checkout@v4
@@ -95,7 +101,7 @@ jobs:
         shell: bash
         run: |
           if [ -n "${{ matrix.features }}" ]; then
-            cargo build -p llama-crab-sys --no-default-features --features "${{ matrix.features }}"
+            cargo build -p llama-crab-sys --no-default-features --features "${{ matrix.sys-features }}"
             cargo build -p llama-crab --no-default-features --features "${{ matrix.features }}"
           else
             cargo build -p llama-crab-sys --no-default-features
