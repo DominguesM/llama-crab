@@ -41,7 +41,7 @@ example_target_bin() {
     tools)             echo "smol|tools" ;;
     embeddings)        echo "bge|embeddings" ;;
     embedding_search)  echo "bge|run_embeddings" ;;
-    reranker)          echo "smol|reranker" ;;
+    reranker)          echo "bge|reranker" ;;
     speculative)       echo "smol|speculative" ;;
     vision)            echo "vision_model|vision" ;;
     mtmd)              echo "vision_model|mtmd" ;;

@@ -26,7 +26,8 @@
 //!   * anything else — user message
 
 use anyhow::{Context, Result};
-use llama_crab::high_level::chat_completion::ChatMessage;
+use llama_crab::chat::BuiltinTemplate;
+use llama_crab::high_level::chat_completion::{create_chat_completion_with, ChatMessage};
 use llama_crab::{Llama, LlamaParams, Role};
 use std::io::{self, BufRead, Write};
 use std::time::Instant;
@@ -91,7 +92,7 @@ fn main() -> Result<()> {
 
         history.push(ChatMessage::new(Role::User, input.to_string()));
         let t0 = Instant::now();
-        match llama.create_chat_completion(&history, 256) {
+        match create_chat_completion_with(&mut llama, &history, BuiltinTemplate::ChatMl, &[], 96) {
             Ok(resp) => {
                 let reply = resp.content.trim().to_string();
                 let dt = t0.elapsed();
