@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
-# Download the GGUF models used by `llama-crab`'s integration tests.
+# Download the GGUF models used by `llama-crab`'s examples and integration tests.
 #
 # Usage:
-#   ./scripts/download_models.sh                 # downloads both
-#   ./scripts/download_models.sh gemma4         # just Gemma 4
-#   ./scripts/download_models.sh lfm-vl         # just LFM2.5-VL
-#   ./scripts/download_models.sh test-image     # just the test PNG
+#   ./scripts/download_models.sh                       # download everything
+#   ./scripts/download_models.sh smol                  # tiny text-only (~400 MB)
+#   ./scripts/download_models.sh gemma4                 # Gemma 4 text + mmproj (~5 GB)
+#   ./scripts/download_models.sh lfm-vl                # LFM2.5-VL text + mmproj (~2 GB)
+#   ./scripts/download_models.sh test-image             # the synthetic PNG fixture
 #
-# Models are placed in `./models/` (the conventional path the tests look
-# at). The script is idempotent: files that already exist are skipped.
+# Models land in `./models/` (the conventional path the examples look at).
+# The script is idempotent: files that already exist are skipped.
 #
-# Requirements: `huggingface-cli` (from `pip install huggingface_hub`) or
-# `curl`. Set `HF_TOKEN` if you want to use a private/gated model.
+# Requirements: `hf` (`pip install --upgrade huggingface_hub`).
+# Set `HF_TOKEN` to access private/gated models.
+#
+# The first run is slow (multiple GB). Subsequent runs are instant.
 
 set -euo pipefail
 
@@ -24,34 +27,100 @@ mkdir -p "$MODELS_DIR" "$FIXTURE_DIR"
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
-download() {
-  local url="$1" dest="$2"
-  if [[ -f "$dest" ]] && [[ "$(stat -f%z "$dest" 2>/dev/null || stat -c%s "$dest")" -gt 1000000 ]]; then
-    echo "✓ already have $(basename "$dest")"
+dry_run() { [[ "${LLAMA_CRAB_DRY_RUN:-0}" == "1" ]]; }
+
+hf_cli() {
+  if have hf && hf --help >/dev/null 2>&1; then
+    HF_CLI=(hf)
     return 0
   fi
-  echo "↓ downloading $(basename "$dest")"
-  if have hf; then
-    hf download "$url" --local-dir "$(dirname "$dest")" --token "${HF_TOKEN:-}"
-  elif have curl; then
-    curl -fL --retry 3 -o "$dest.part" "$url"
-    mv "$dest.part" "$dest"
+  local py="${PYTHON:-python}"
+  if command -v "$py" >/dev/null 2>&1 && "$py" -m huggingface_hub.cli.hf --help >/dev/null 2>&1; then
+    HF_CLI=("$py" -m huggingface_hub.cli.hf)
+    return 0
+  fi
+  return 1
+}
+
+# Get the size of a file in bytes (cross-platform).
+fsize() {
+  if have stat; then
+    stat -f%z "$1" 2>/dev/null || stat -c%s "$1" 2>/dev/null || echo 0
   else
-    echo "ERROR: need either 'hf' (huggingface-cli) or 'curl' on PATH" >&2
-    return 1
+    wc -c <"$1" | tr -d ' '
   fi
 }
 
-# ---- test image (256×256 PNG) -------------------------------------------
+download_hf() {
+  local repo="$1" filename="$2" dest="$3"
+  local dir
+  dir="$(dirname "$dest")"
+  local downloaded="$dir/$filename"
+  display_cmd=(hf download "$repo" "$filename" --local-dir "$dir")
+  cmd=(hf download "$repo" "$filename" --local-dir "$dir")
+  if [[ -n "${HF_TOKEN:-}" ]]; then
+    display_cmd+=(--token "$HF_TOKEN")
+    cmd+=(--token "$HF_TOKEN")
+  fi
+  if dry_run; then
+    echo "↓ $(basename "$dest")  ($filename)"
+    echo "${display_cmd[*]}"
+    if [[ "$downloaded" != "$dest" ]]; then
+      echo "mv $downloaded $dest"
+    fi
+    return 0
+  fi
+
+  if [[ -f "$dest" ]] && [[ "$(fsize "$dest")" -gt 1000000 ]]; then
+    echo "✓ $(basename "$dest")  ($(numfmt "$(fsize "$dest")"))"
+    return 0
+  fi
+  if ! hf_cli; then
+    echo "ERROR: need the Hugging Face CLI. Install with: pip install --upgrade huggingface_hub" >&2
+    return 1
+  fi
+  cmd=("${HF_CLI[@]}" download "$repo" "$filename" --local-dir "$dir")
+  if [[ -n "${HF_TOKEN:-}" ]]; then
+    cmd+=(--token "$HF_TOKEN")
+  fi
+
+  # Drop any leftover `.part` file from a previous curl-based interrupted run.
+  [[ -f "$dest.part" ]] && rm -f "$dest.part"
+
+  echo "↓ $(basename "$dest")  ($filename)"
+  "${cmd[@]}"
+  if [[ "$downloaded" != "$dest" ]]; then
+    mv "$downloaded" "$dest"
+  fi
+}
+
+# Pretty-print a byte count.
+numfmt() {
+  # Use a here-string for portability and assign to awk variables via `-v`
+  # because BSD awk on macOS does not read stdin inside `BEGIN` blocks.
+  awk -v bytes="$1" 'BEGIN {
+    n = bytes
+    split("B KB MB GB TB", u, " ")
+    i = 1
+    while (n >= 1024 && i < 5) { n /= 1024; i++ }
+    printf "%.1f %s", n, u[i]
+  }'
+}
+
+# ---- test image (256×256 PNG) --------------------------------------------
 
 test_image() {
   if [[ -f "$FIXTURE_DIR/test_image.png" ]]; then
-    echo "✓ test image present"
+    echo "✓ test_image.png  ($(numfmt "$(fsize "$FIXTURE_DIR/test_image.png")"))"
     return
   fi
-  python3 - <<'PY' || true
+  echo "↓ generating test_image.png (256×256 red/blue checker)"
+  if dry_run; then
+    echo "python3 - <<'PY' > $FIXTURE_DIR/test_image.png"
+    return
+  fi
+  python3 - <<'PY'
 import struct, zlib, os
-# Write a 256×256 RGB PNG with a 4×4 checker pattern (red/blue).
 W = H = 256
 def chunk(tag, data):
     crc = zlib.crc32(tag + data) & 0xffffffff
@@ -80,49 +149,68 @@ PY
 
 # ---- models ---------------------------------------------------------------
 
-gemma4() {
-  # LM Studio community repack of Gemma 4 E4B Instruct — chat-tuned,
-  # multimodal. We grab the Q4_K_M quant (~4 GB) and the matching mmproj.
-  local repo="lmstudio-community/gemma-4-E4B-it-GGUF"
-  download \
-    "https://huggingface.co/${repo}/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf" \
-    "$MODELS_DIR/gemma-4-E4B-it-Q4_K_M.gguf"
-  download \
-    "https://huggingface.co/${repo}/resolve/main/gemma-4-E4B-it-mmproj.gguf" \
-    "$MODELS_DIR/gemma-4-E4B-it-mmproj.gguf"
+# Smol text-only model used by examples/quickstart and examples/chat.
+# Qwen2.5 0.5B Instruct, Q4_K_M (~400 MB). Tiny enough to download in <1 min.
+smol() {
+  local repo="Qwen/Qwen2.5-0.5B-Instruct-GGUF"
+  download_hf "$repo" "qwen2.5-0.5b-instruct-q4_k_m.gguf" \
+    "$MODELS_DIR/qwen2.5-0.5b-instruct-q4_k_m.gguf"
+  test_image
 }
 
+# LM Studio's Q4_K_M repack of Gemma 4 E4B Instruct — text + vision.
+# ~4 GB text model + ~1.4 GB mmproj projector.
+gemma4() {
+  local repo="lmstudio-community/gemma-4-E4B-it-GGUF"
+  download_hf "$repo" "gemma-4-E4B-it-Q4_K_M.gguf" \
+    "$MODELS_DIR/gemma-4-E4B-it-Q4_K_M.gguf"
+  download_hf "$repo" "mmproj-gemma-4-E4B-it-BF16.gguf" \
+    "$MODELS_DIR/mmproj-gemma-4-E4B-it-BF16.gguf"
+  test_image
+}
+
+# Unsloth's Q4_K_M repack of Liquid AI's LFM2.5-VL 1.6B — text + vision.
+# ~1 GB text model + ~340 MB mmproj projector.
 lfm_vl() {
-  # Unsloth's Q4_K_M repack of Liquid AI's LFM2.5-VL 1.6B.
   local repo="unsloth/LFM2.5-VL-1.6B-GGUF"
-  download \
-    "https://huggingface.co/${repo}/resolve/main/LFM2.5-VL-1.6B-Q4_K_M.gguf" \
+  download_hf "$repo" "LFM2.5-VL-1.6B-Q4_K_M.gguf" \
     "$MODELS_DIR/LFM2.5-VL-1.6B-Q4_K_M.gguf"
-  download \
-    "https://huggingface.co/${repo}/resolve/main/LFM2.5-VL-1.6B-mmproj.gguf" \
-    "$MODELS_DIR/LFM2.5-VL-1.6B-mmproj.gguf"
+  download_hf "$repo" "mmproj-BF16.gguf" \
+    "$MODELS_DIR/LFM2.5-VL-1.6B-mmproj-BF16.gguf"
+  test_image
+}
+
+# Embedding model used by examples/embeddings (small BGE).
+bge_small() {
+  local repo="CompendiumLabs/bge-small-en-v1.5-gguf"
+  download_hf "$repo" "bge-small-en-v1.5-q4_k_m.gguf" \
+    "$MODELS_DIR/bge-small-en-v1.5-q4_k_m.gguf"
 }
 
 # ---- dispatch -------------------------------------------------------------
 
 target="${1:-all}"
 case "$target" in
+  smol)         smol ;;
   gemma4)       gemma4 ;;
   lfm-vl|lfmvl) lfm_vl ;;
+  bge)          bge_small ;;
   test-image)   test_image ;;
   all)
+    smol
     gemma4
     lfm_vl
+    bge_small
     test_image
     ;;
   *)
     echo "unknown target: $target" >&2
-    echo "valid targets: gemma4, lfm-vl, test-image, all" >&2
+    echo "valid targets: smol, gemma4, lfm-vl, bge, test-image, all" >&2
     exit 2
     ;;
 esac
 
 echo
-echo "All requested files in place."
-echo "Run the tests with:"
-echo "  cargo test --workspace --features mtmd -- --nocapture"
+echo "✓ All requested files in place."
+echo
+du -h "$MODELS_DIR" 2>/dev/null | sort -k2 || ls -lh "$MODELS_DIR"
