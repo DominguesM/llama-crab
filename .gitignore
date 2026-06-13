@@ -21,5 +21,10 @@ target
 #.idea/
 # Don't commit downloaded GGUF models to git.
 models/
+
+# Don't commit test fixtures
 tests/fixtures/*.gguf
+
+# Don't commit generated documentation
 .DS_Store
+docs/book/
