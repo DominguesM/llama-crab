@@ -126,6 +126,12 @@ impl LlamaModel {
         LlamaToken(unsafe { sys::llama_token_eos(self.vocab()) })
     }
 
+    /// End-of-turn token.
+    #[must_use]
+    pub fn token_eot(&self) -> LlamaToken {
+        LlamaToken(unsafe { sys::llama_token_eot(self.vocab()) })
+    }
+
     /// Tokenize `text`. By default, BOS is added only if the model requires it.
     ///
     /// # Errors

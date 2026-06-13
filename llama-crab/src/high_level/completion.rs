@@ -42,7 +42,7 @@ pub fn create_completion(llama: &mut Llama, prompt: &str, max_tokens: usize) -> 
     // of any previous decode. p0 = p1 = -1 means "the entire range".
     let _ = llama.context().seq_rm(0, -1, -1);
 
-    let tokens = llama.model().tokenize(prompt, true, false)?;
+    let tokens = llama.model().tokenize(prompt, true, true)?;
 
     // Build a batch with the prompt; only the last token produces logits.
     let mut batch = crate::batch::LlamaBatch::new(tokens.len(), 1);
@@ -59,6 +59,7 @@ pub fn create_completion(llama: &mut Llama, prompt: &str, max_tokens: usize) -> 
 
     let ctx_ptr = llama.context().raw_handle();
     let eos = llama.model().token_eos();
+    let eot = llama.model().token_eot();
     let mut generated = String::new();
     let mut last_pos = tokens.len() as i32;
     let mut n_generated = 0_usize;
@@ -76,7 +77,7 @@ pub fn create_completion(llama: &mut Llama, prompt: &str, max_tokens: usize) -> 
         };
         let next = unsafe { sampler.sample(ctx_ptr, idx) };
         sampler.accept(next);
-        if next == eos {
+        if next == eos || next == eot {
             stop_reason = StopReason::Eos;
             break;
         }

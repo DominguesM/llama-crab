@@ -17,21 +17,19 @@ impl Llama {
     /// Returns an error if embeddings are not enabled, the model fails
     /// to encode, or the embedding slice cannot be read.
     pub fn embed(&mut self, text: &str, normalize: bool) -> Result<Vec<f32>> {
+        let _ = self.context().seq_rm(0, -1, -1);
         let tokens = self.model().tokenize(text, true, false)?;
         if tokens.is_empty() {
             return Err(LlamaError::Batch("empty tokenization".into()));
         }
-        // The last token produces the embedding; only that one has
-        // `logits=true`.
         let mut batch = LlamaBatch::new(tokens.len(), 1);
         for (i, &t) in tokens.iter().enumerate() {
-            let logits = i + 1 == tokens.len();
             batch
-                .add(t, i as i32, &[0], logits)
+                .add(t, i as i32, &[0], true)
                 .map_err(LlamaError::from)?;
         }
         self.context_mut().encode(&batch)?;
-        let mut v = self.context().embeddings()?.to_vec();
+        let mut v = self.context().embeddings_seq(0)?.to_vec();
         if normalize {
             LlamaContextParams::l2_normalize(&mut v);
         }

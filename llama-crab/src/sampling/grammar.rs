@@ -61,10 +61,12 @@ impl LlamaSampler {
             std::ffi::CString::new(grammar).map_err(|_| GrammarError::GrammarNullBytes)?;
         let root =
             std::ffi::CString::new(grammar_root).map_err(|_| GrammarError::GrammarNullBytes)?;
-        let p = sys::llama_sampler_init_grammar(model.raw(), grammar.as_ptr(), root.as_ptr());
+        let p = unsafe {
+            sys::llama_sampler_init_grammar(model.vocab(), grammar.as_ptr(), root.as_ptr())
+        };
         if p.is_null() {
             return Err(GrammarError::NullGrammar);
         }
-        Ok(Self::from_raw(p))
+        Ok(unsafe { Self::from_raw(p) })
     }
 }

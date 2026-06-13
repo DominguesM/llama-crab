@@ -278,7 +278,7 @@ impl SchemaConverter {
         let max = schema
             .get("maxLength")
             .and_then(|v| v.as_u64())
-            .unwrap_or(4096);
+            .unwrap_or(256);
         let _ = schema.get("minLength");
         let name = self.fresh_name("str");
         let body = format!("\"\\\"\" [^\\\"\\\\]{{0,{max}}} \"\\\"\"");
@@ -375,14 +375,12 @@ impl SchemaConverter {
         let mut first = true;
         for (i, (k, v)) in pairs.iter().enumerate() {
             if !first {
-                body.push_str(r#" "","" "#);
+                body.push_str(r#" "," "#);
             }
             first = false;
             let _ = i;
             // Quote the key as a JSON string literal.
-            let quoted_key = serde_json::to_string(k).unwrap_or_default();
-            let _ = quoted_key;
-            write!(&mut body, " \"{}\" \":\" {v}", quoted_key.trim_matches('"'),).unwrap();
+            write!(&mut body, " \"\\\"{}\\\"\" \":\" {v}", escape_gbnf(k)).unwrap();
         }
         // Add optional trailing separators
         if !pairs.is_empty() {
