@@ -2,7 +2,7 @@ name: Update llama.cpp
 
 on:
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "0 0 * * 1"
   workflow_dispatch:
 
 permissions:
@@ -28,6 +28,7 @@ jobs:
           git fetch --tags
           LATEST=$(git tag --sort=-version:refname | grep -E '^b[0-9]+$' | head -1)
           echo "Latest llama.cpp release: $LATEST"
+          echo "LATEST=$LATEST" >> $GITHUB_ENV
           cd ../..
           git submodule set-branch --branch $LATEST -- llama-crab-sys/llama.cpp
           git submodule update --init --remote -- llama-crab-sys/llama.cpp
@@ -42,18 +43,15 @@ jobs:
           else
             echo "changed=true" >> $GITHUB_OUTPUT
             git add llama-crab-sys/llama.cpp
-            git commit -m "chore(sys): bump llama.cpp to ${{ env.LATEST }}"
+            git commit -m "chore(sys): bump llama.cpp to $LATEST"
           fi
-        env:
-          LATEST: ${{ steps.latest.outputs.tag }}
       - name: Open PR
         if: steps.check.outputs.changed == 'true'
-        uses: gh-cli/github-cli@v2
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with: |
+        run: |
           gh pr create \
-            --title "chore(sys): bump llama.cpp" \
+            --title "chore(sys): bump llama.cpp to ${{ env.LATEST }}" \
             --body "Automated submodule bump." \
             --base main \
             --head update-llama-cpp
