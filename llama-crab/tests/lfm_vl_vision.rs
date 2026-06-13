@@ -111,8 +111,7 @@ fn lfm_vl_vision_question_answering() {
     let mut sampler = LlamaSampler::greedy().expect("greedy");
     let mut out = String::new();
     let eos = llama.model().token_eos();
-    let mut n_generated = 0_usize;
-    for _ in 0..64 {
+    for (n_generated, _) in (0..64).enumerate() {
         let tok: LlamaToken = unsafe { sampler.sample(ctx_ptr, -1) };
         sampler.accept(tok);
         if tok == eos {
@@ -126,7 +125,6 @@ fn lfm_vl_vision_question_answering() {
             .context()
             .decode(&single)
             .expect("decode generated token");
-        n_generated += 1;
     }
     let elapsed = start.elapsed();
     eprintln!("vision answer ({:?}): {:?}", elapsed, out);

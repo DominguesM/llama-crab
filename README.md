@@ -8,6 +8,7 @@
 [![Release](https://github.com/DominguesM/llama-crab/actions/workflows/release.yml/badge.svg)](https://github.com/DominguesM/llama-crab/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE-MIT)
 [![MSRV: 1.88](https://img.shields.io/badge/MSRV-1.88-blue.svg)](rust-toolchain.toml)
+[![llama.cpp: b9623](https://img.shields.io/badge/llama.cpp-b9623-5c5c5c?logo=github)](https://github.com/ggml-org/llama.cpp/commit/341babcf73f198c78aaa39e4b6ab1a84facb01e7)
 [![Hugging Face](https://img.shields.io/badge/Hugging%20Face-dominguesm-ffcc4d?logo=https%3A%2F%2Fhuggingface.co%2Fdatasets%2Fhuggingface%2Fbrand-assets%2Fresolve%2Fmain%2Fhf-logo.svg&logoColor=black)](https://huggingface.co/dominguesm)
 
 <p align="center">
