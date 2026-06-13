@@ -26,8 +26,14 @@ use crate::error::Result;
 use crate::model::params::LlamaModelParams;
 use crate::model::LlamaModel;
 
-pub use self::chat_completion::{create_chat_completion, ChatMessage};
-pub use self::completion::{create_completion, Completion, StopReason};
+pub use self::chat_completion::{
+    create_chat_completion, create_chat_completion_stream, create_chat_completion_stream_with,
+    ChatMessage,
+};
+pub use self::completion::{
+    create_completion, create_completion_stream, create_completion_with_options, Completion,
+    CompletionChunk, CompletionOptions, StopReason, StreamControl,
+};
 
 /// Top-level orchestrator. Owns the backend, the model and the context.
 #[derive(Debug)]
@@ -78,6 +84,30 @@ impl Llama {
         create_completion(self, prompt, max_tokens)
     }
 
+    /// Synchronous text completion with high-level options.
+    pub fn create_completion_with_options(
+        &mut self,
+        prompt: &str,
+        options: CompletionOptions,
+    ) -> Result<Completion> {
+        create_completion_with_options(self, prompt, options)
+    }
+
+    /// Synchronous streaming text completion. The callback is invoked as text
+    /// becomes available and can return [`StreamControl::Stop`] to end
+    /// generation.
+    pub fn create_completion_stream<F>(
+        &mut self,
+        prompt: &str,
+        options: CompletionOptions,
+        on_chunk: F,
+    ) -> Result<Completion>
+    where
+        F: FnMut(CompletionChunk) -> StreamControl,
+    {
+        create_completion_stream(self, prompt, options, on_chunk)
+    }
+
     /// Synchronous chat completion. The messages are rendered through a
     /// minimal `role: content\n` template (real chat-template rendering lands
     /// in v0.2) and the response is decoded token-by-token.
@@ -87,6 +117,35 @@ impl Llama {
         max_tokens: usize,
     ) -> Result<ChatMessage> {
         create_chat_completion(self, messages, max_tokens)
+    }
+
+    /// Synchronous streaming chat completion using the Plain template.
+    pub fn create_chat_completion_stream<F>(
+        &mut self,
+        messages: &[ChatMessage],
+        max_tokens: usize,
+        on_chunk: F,
+    ) -> Result<ChatMessage>
+    where
+        F: FnMut(CompletionChunk) -> StreamControl,
+    {
+        create_chat_completion_stream(self, messages, max_tokens, on_chunk)
+    }
+
+    /// Synchronous streaming chat completion with a chosen built-in template,
+    /// optional tools, and completion options.
+    pub fn create_chat_completion_stream_with<F>(
+        &mut self,
+        messages: &[ChatMessage],
+        template: crate::chat::BuiltinTemplate,
+        tools: &[crate::chat::ToolDefinition],
+        options: CompletionOptions,
+        on_chunk: F,
+    ) -> Result<ChatMessage>
+    where
+        F: FnMut(CompletionChunk) -> StreamControl,
+    {
+        create_chat_completion_stream_with(self, messages, template, tools, options, on_chunk)
     }
 }
 

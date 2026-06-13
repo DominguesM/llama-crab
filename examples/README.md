@@ -32,6 +32,7 @@ examples/
 ├── README.md                    # this file
 │
 ├── quickstart/                  # smallest end-to-end demo (text only)
+├── streaming/                   # high-level token-by-token output
 ├── stateful_chat/               # interactive multi-turn chat REPL
 ├── embedding_search/            # cosine-similarity semantic search
 │
@@ -51,6 +52,7 @@ examples/
 | Example              | Model                                  | Size  | What it shows |
 | -------------------- | -------------------------------------- | ----- | ------------- |
 | `quickstart`         | `Qwen/Qwen2.5-0.5B-Instruct-GGUF`      | ~400 MB | Load → tokenize → complete → chat → FIM |
+| `streaming`          | same as `quickstart`                   | ~400 MB | High-level token-by-token output |
 | `stateful_chat`      | same as `quickstart`                   | ~400 MB | REPL with growing history, `/clear`, `/save` |
 | `embedding_search`   | `CompendiumLabs/bge-small-en-v1.5-gguf` | ~30 MB | L2-normalized embeddings + cosine ranking |
 | `simple`             | any text GGUF                          | varies | Low-level decode loop with custom sampler chain |
@@ -85,6 +87,7 @@ You can replicate the same steps manually:
 
 # 2. Run the example.
 cargo run --release --bin run_quickstart
+cargo run --release --bin run_streaming
 cargo run --release --bin run_chat
 cargo run --release --bin run_embeddings
 ```

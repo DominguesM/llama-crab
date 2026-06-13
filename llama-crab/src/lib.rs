@@ -56,7 +56,9 @@ pub use crate::chat::Role;
 pub use crate::context::{LlamaContext, LlamaContextParams};
 pub use crate::error::{LlamaError, Result};
 pub use crate::high_level::chat_completion::ChatMessage;
-pub use crate::high_level::completion::{Completion, StopReason};
+pub use crate::high_level::completion::{
+    Completion, CompletionChunk, CompletionOptions, StopReason, StreamControl,
+};
 pub use crate::high_level::tokenizer::{FimTokens, LlamaTokenizer, Tokenizer};
 pub use crate::high_level::{Llama, LlamaParams};
 pub use crate::log::{send_logs_to_tracing, LogOptions};

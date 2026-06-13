@@ -4,6 +4,7 @@
 # Usage:
 #   ./examples/run.sh quickstart           # downloads Qwen2.5 0.5B if needed
 #   ./examples/run.sh chat                 # same model, interactive REPL
+#   ./examples/run.sh streaming            # same model, token streaming
 #   ./examples/run.sh vision gemma4        # downloads Gemma 4 + mmproj
 #   ./examples/run.sh vision lfm-vl        # downloads LFM2.5-VL
 #   ./examples/run.sh embeddings           # downloads BGE-small
@@ -34,6 +35,7 @@ TEST_IMAGE="tests/fixtures/test_image.png"
 example_target_bin() {
   case "$1" in
     quickstart)        echo "smol|run_quickstart" ;;
+    streaming)         echo "smol|run_streaming" ;;
     chat)              echo "smol|chat" ;;
     stateful_chat)     echo "smol|run_chat" ;;
     simple)            echo "smol|simple" ;;
@@ -72,7 +74,7 @@ if [[ $# -lt 1 ]]; then
   echo "usage: $0 <example> [extra args...]" >&2
   echo >&2
   echo "Available examples:" >&2
-  for ex in quickstart chat stateful_chat simple structured tools \
+  for ex in quickstart streaming chat stateful_chat simple structured tools \
             embeddings embedding_search reranker speculative vision mtmd lfm_vl; do
     printf "  %-18s  (downloads + runs the binary)\n" "$ex" >&2
   done
@@ -86,7 +88,7 @@ shift
 
 if ! mapping="$(example_target_bin "$example")"; then
   echo "unknown example: $example" >&2
-  echo "available: quickstart, chat, stateful_chat, simple, structured, tools," >&2
+  echo "available: quickstart, streaming, chat, stateful_chat, simple, structured, tools," >&2
   echo "           embeddings, embedding_search, reranker, speculative," >&2
   echo "           vision, mtmd" >&2
   exit 2
