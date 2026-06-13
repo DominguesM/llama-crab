@@ -108,6 +108,23 @@ jobs:
             cargo build -p llama-crab --no-default-features
           fi
 
+  feature-surface:
+    name: Feature surface (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@1.88
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Check optional Linux-safe features
+        env:
+          RUSTFLAGS: ""
+        run: |
+          cargo check -p llama-crab --no-default-features --features openmp,common,llguidance,hf-tokenizer,disk-cache
+
   test:
     name: Test
     runs-on: ${{ matrix.os }}
@@ -140,11 +157,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-      - uses: dtolnay/rust-toolchain@1.88
+      - uses: dtolnay/rust-toolchain@nightly
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
       - name: Document llama-crab
-        run: RUSTDOCFLAGS="-D warnings" cargo doc -p llama-crab --no-deps --no-default-features --features openmp,mtmd
+        run: RUSTDOCFLAGS="--cfg docsrs -D warnings" cargo doc -p llama-crab --no-deps --no-default-features --features openmp,mtmd
       - name: Document llama-crab-sys
-        run: cargo doc -p llama-crab-sys --no-deps --no-default-features --features openmp,mtmd
+        run: RUSTDOCFLAGS="--cfg docsrs -D warnings" cargo doc -p llama-crab-sys --no-deps --no-default-features --features openmp,mtmd
