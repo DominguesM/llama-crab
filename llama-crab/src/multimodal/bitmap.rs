@@ -32,12 +32,12 @@ impl MtmdBitmap {
 
     /// Construct a bitmap from a float audio buffer.
     pub fn from_audio_data(data: &[f32]) -> Result<Self> {
-        let handle = unsafe {
-            sys::mtmd_bitmap_init_from_audio(data.len(), data.as_ptr())
-        };
+        let handle = unsafe { sys::mtmd_bitmap_init_from_audio(data.len(), data.as_ptr()) };
         NonNull::new(handle)
             .map(|handle| Self { handle })
-            .ok_or(LlamaError::Batch("mtmd_bitmap_init_from_audio returned null".into()))
+            .ok_or(LlamaError::Batch(
+                "mtmd_bitmap_init_from_audio returned null".into(),
+            ))
     }
 
     /// Construct a bitmap from an image file on disk.

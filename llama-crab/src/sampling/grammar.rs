@@ -7,9 +7,9 @@ use llama_crab_sys as sys;
 
 use crate::model::LlamaModel;
 
+use super::LlamaSampler;
 #[allow(unused_imports)]
 use crate::token::LlamaToken;
-use super::LlamaSampler;
 
 /// Errors that can arise while building a GBNF grammar sampler.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -57,10 +57,10 @@ impl LlamaSampler {
         grammar: &str,
         grammar_root: &str,
     ) -> Result<Self, GrammarError> {
-        let grammar = std::ffi::CString::new(grammar)
-            .map_err(|_| GrammarError::GrammarNullBytes)?;
-        let root = std::ffi::CString::new(grammar_root)
-            .map_err(|_| GrammarError::GrammarNullBytes)?;
+        let grammar =
+            std::ffi::CString::new(grammar).map_err(|_| GrammarError::GrammarNullBytes)?;
+        let root =
+            std::ffi::CString::new(grammar_root).map_err(|_| GrammarError::GrammarNullBytes)?;
         let p = sys::llama_sampler_init_grammar(model.raw(), grammar.as_ptr(), root.as_ptr());
         if p.is_null() {
             return Err(GrammarError::NullGrammar);

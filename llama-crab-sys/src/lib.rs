@@ -25,7 +25,10 @@
 //! | `llguidance` | `llguidance` sampler (custom C-ABI vtable) |
 //! | `dynamic-backends` | Load GGML backends as shared objects at runtime |
 
-#![doc(html_logo_url = "https://raw.githubusercontent.com/DominguesM/llama-crab/main/docs/src/assets/logo.png")]
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/DominguesM/llama-crab/main/docs/src/assets/logo.png"
+)]
+#![allow(unknown_lints)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(non_upper_case_globals)]

@@ -47,11 +47,7 @@ impl Default for PromptLookupDecoding {
 }
 
 impl DraftModel for PromptLookupDecoding {
-    fn draft(
-        &self,
-        input: &[crate::token::LlamaToken],
-        n: usize,
-    ) -> Vec<crate::token::LlamaToken> {
+    fn draft(&self, input: &[crate::token::LlamaToken], n: usize) -> Vec<crate::token::LlamaToken> {
         if input.len() < self.max_ngram_size + 1 || n == 0 {
             return Vec::new();
         }
@@ -147,15 +143,31 @@ mod tests {
         let d = PromptLookupDecoding::new(2, 5);
         // The last 2 tokens are (3, 4). An earlier occurrence is at
         // index 0; the tokens that follow are 1, 2, 3, 4.
-        let input: Vec<LlamaToken> = vec![LlamaToken(3), LlamaToken(4), LlamaToken(5), LlamaToken(6), LlamaToken(3), LlamaToken(4)];
+        let input: Vec<LlamaToken> = vec![
+            LlamaToken(3),
+            LlamaToken(4),
+            LlamaToken(5),
+            LlamaToken(6),
+            LlamaToken(3),
+            LlamaToken(4),
+        ];
         let out = d.draft(&input, 4);
-        assert_eq!(out, vec![LlamaToken(5), LlamaToken(6), LlamaToken(3), LlamaToken(4)]);
+        assert_eq!(
+            out,
+            vec![LlamaToken(5), LlamaToken(6), LlamaToken(3), LlamaToken(4)]
+        );
     }
 
     #[test]
     fn prompt_lookup_no_match() {
         let d = PromptLookupDecoding::new(2, 4);
-        let input: Vec<LlamaToken> = vec![LlamaToken(0), LlamaToken(1), LlamaToken(2), LlamaToken(3), LlamaToken(4)];
+        let input: Vec<LlamaToken> = vec![
+            LlamaToken(0),
+            LlamaToken(1),
+            LlamaToken(2),
+            LlamaToken(3),
+            LlamaToken(4),
+        ];
         let out = d.draft(&input, 4);
         assert!(out.is_empty());
     }

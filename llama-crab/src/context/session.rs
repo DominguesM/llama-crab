@@ -26,9 +26,8 @@ impl LlamaContext<'_> {
     pub fn state_to_bytes(&self) -> Result<Vec<u8>> {
         let size = self.state_size();
         let mut buf = vec![0_u8; size];
-        let written = unsafe {
-            llama_crab_sys::llama_state_get_data(self.raw(), buf.as_mut_ptr(), size)
-        };
+        let written =
+            unsafe { llama_crab_sys::llama_state_get_data(self.raw(), buf.as_mut_ptr(), size) };
         if written != size {
             return Err(LlamaError::Ffi(-1));
         }

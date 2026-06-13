@@ -25,7 +25,6 @@ path = "src/lib.rs"
 [lints.rust]
 missing_docs = "allow"
 unsafe_op_in_unsafe_fn = "warn"
-unreachable-docs = "allow"
 
 [lints.clippy]
 pedantic = { level = "allow", priority = -1 }

@@ -96,7 +96,10 @@ pub fn apply_chat_template_oaicompat(
     let mut env = serde_json::Map::new();
     env.insert("messages".into(), Value::Array(messages_json));
     env.insert("tools".into(), Value::Array(tools_json));
-    env.insert("add_generation_prompt".into(), json!(params.add_generation_prompt));
+    env.insert(
+        "add_generation_prompt".into(),
+        json!(params.add_generation_prompt),
+    );
     if let Some(tc) = &params.tool_choice {
         env.insert("tool_choice".into(), json!(tc));
     }
@@ -108,14 +111,22 @@ pub fn apply_chat_template_oaicompat(
     let _ = Value::Object(env.clone());
     // Render via the simpler template.
     let mut prompt = String::new();
-    if let Some(sys) = params.messages.iter().find(|m| m.role == super::message::Role::System) {
+    if let Some(sys) = params
+        .messages
+        .iter()
+        .find(|m| m.role == super::message::Role::System)
+    {
         prompt.push_str(&format!("[SYSTEM]\n{}\n", sys.content));
     }
     for m in params.messages {
         if m.role == super::message::Role::System {
             continue;
         }
-        prompt.push_str(&format!("[{}]\n{}\n", m.role.as_str().to_uppercase(), m.content));
+        prompt.push_str(&format!(
+            "[{}]\n{}\n",
+            m.role.as_str().to_uppercase(),
+            m.content
+        ));
     }
     if !params.tools.is_empty() {
         prompt.push_str("\n[TOOLS]\n");
@@ -127,7 +138,10 @@ pub fn apply_chat_template_oaicompat(
         prompt.push_str("\n[ASSISTANT]\n");
     }
     let _ = tpl;
-    Ok(ChatTemplateResult { prompt, ..Default::default() })
+    Ok(ChatTemplateResult {
+        prompt,
+        ..Default::default()
+    })
 }
 
 fn jinja_template_with_tools() -> &'static str {

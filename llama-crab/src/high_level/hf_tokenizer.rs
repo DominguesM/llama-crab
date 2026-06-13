@@ -30,7 +30,11 @@ mod inner {
                 .inner
                 .encode(text, add_bos)
                 .map_err(|e| LlamaError::Batch(format!("hf encode: {e}")))?;
-            Ok(enc.get_ids().iter().map(|&i| LlamaToken(i as i32)).collect())
+            Ok(enc
+                .get_ids()
+                .iter()
+                .map(|&i| LlamaToken(i as i32))
+                .collect())
         }
 
         /// Decode token ids back into a `String`.

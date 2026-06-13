@@ -239,8 +239,20 @@ mod tests {
         let c = RamCache::new();
         let toks_a: Vec<LlamaToken> = (0..10).map(LlamaToken).collect();
         let toks_b: Vec<LlamaToken> = (0..20).map(LlamaToken).collect();
-        c.store(&toks_a, CacheEntry { state: vec![1, 2, 3], n_past: 10 });
-        c.store(&toks_b, CacheEntry { state: vec![9, 9, 9], n_past: 20 });
+        c.store(
+            &toks_a,
+            CacheEntry {
+                state: vec![1, 2, 3],
+                n_past: 10,
+            },
+        );
+        c.store(
+            &toks_b,
+            CacheEntry {
+                state: vec![9, 9, 9],
+                n_past: 20,
+            },
+        );
         let query: Vec<LlamaToken> = (0..20).map(LlamaToken).collect();
         let hit = c.lookup(&query).unwrap();
         assert_eq!(hit.n_past, 20);
@@ -250,7 +262,13 @@ mod tests {
     fn ram_cache_partial_match() {
         let c = RamCache::new();
         let stored: Vec<LlamaToken> = (0..10).map(LlamaToken).collect();
-        c.store(&stored, CacheEntry { state: vec![], n_past: 10 });
+        c.store(
+            &stored,
+            CacheEntry {
+                state: vec![],
+                n_past: 10,
+            },
+        );
         let query: Vec<LlamaToken> = (0..20).map(LlamaToken).collect();
         let hit = c.lookup(&query).unwrap();
         assert_eq!(hit.n_past, 10);
@@ -260,7 +278,13 @@ mod tests {
     fn ram_cache_no_match() {
         let c = RamCache::new();
         let stored: Vec<LlamaToken> = vec![LlamaToken(0), LlamaToken(1), LlamaToken(2)];
-        c.store(&stored, CacheEntry { state: vec![], n_past: 3 });
+        c.store(
+            &stored,
+            CacheEntry {
+                state: vec![],
+                n_past: 3,
+            },
+        );
         let query: Vec<LlamaToken> = vec![LlamaToken(99), LlamaToken(98)];
         assert!(c.lookup(&query).is_none());
     }

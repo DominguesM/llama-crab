@@ -62,8 +62,7 @@ fn lfm_vl_vision_question_answering() {
     eprintln!("LFM2.5-VL loaded: {} layers", llama.model().n_layer());
 
     // 2. Initialize the multimodal context.
-    let mtmd = MtmdContext::init_from_file(&mmproj_path, llama.model())
-        .expect("mtmd init");
+    let mtmd = MtmdContext::init_from_file(&mmproj_path, llama.model()).expect("mtmd init");
     assert!(mtmd.support_vision(), "LFM2.5-VL should support vision");
     eprintln!("mmproj supports vision: OK");
 

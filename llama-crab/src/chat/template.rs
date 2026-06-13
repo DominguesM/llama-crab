@@ -273,9 +273,7 @@ fn render_mistral(sys: &str, conv: &[(Role, String)], gen: bool) -> String {
 }
 
 fn render_llama3(sys: &str, conv: &[(Role, String)], gen: bool) -> String {
-    let mut s = String::from(
-        "<|begin_of_text|>",
-    );
+    let mut s = String::from("<|begin_of_text|>");
     if !sys.is_empty() {
         s.push_str(&format!(
             "<|start_header_id|>system<|end_header_id|>\n\n{sys}<|eot_id|>"
@@ -370,10 +368,7 @@ fn render_gemma(sys: &str, conv: &[(Role, String)], gen: bool) -> String {
         s.push_str(&format!("<start_of_turn>user\n{sys}<end_of_turn>\n"));
     }
     for (r, c) in conv {
-        s.push_str(&format!(
-            "<start_of_turn>{}<end_of_turn>\n",
-            r.as_str()
-        ));
+        s.push_str(&format!("<start_of_turn>{}<end_of_turn>\n", r.as_str()));
         s.push_str(&format!("{}\n", c));
         // Insert per-message turn markers? In Gemma 4 multi-turn format,
         // the model always alternates user → model → user → model.
@@ -952,10 +947,7 @@ impl<'a> Parser<'a> {
             self.skip_ws();
             if self.eat('.') {
                 let key = self.parse_ident()?;
-                e = Expr::Subscript(
-                    Box::new(e),
-                    Box::new(Expr::Literal(Value::String(key))),
-                );
+                e = Expr::Subscript(Box::new(e), Box::new(Expr::Literal(Value::String(key))));
             } else if self.eat('[') {
                 let key = self.parse_expr()?;
                 self.skip_ws();
@@ -999,7 +991,9 @@ impl<'a> Parser<'a> {
             if c == '{' {
                 return self.parse_dict();
             }
-            if c.is_ascii_digit() || (c == '-' && self.src[self.pos + 1..].starts_with(|d: char| d.is_ascii_digit())) {
+            if c.is_ascii_digit()
+                || (c == '-' && self.src[self.pos + 1..].starts_with(|d: char| d.is_ascii_digit()))
+            {
                 return self.parse_number();
             }
         }
@@ -1127,7 +1121,10 @@ impl<'a> Parser<'a> {
 
 fn eval(node: &Node, env: &mut TemplateEnv, out: &mut String) -> Result<(), TemplateError> {
     match node {
-        Node::Text(s) => { out.push_str(s); Ok(()) }
+        Node::Text(s) => {
+            out.push_str(s);
+            Ok(())
+        }
         Node::Expr(e) => {
             let v = eval_expr(e, env)?;
             out.push_str(&stringify(v));
@@ -1135,9 +1132,13 @@ fn eval(node: &Node, env: &mut TemplateEnv, out: &mut String) -> Result<(), Temp
         }
         Node::If { cond, then, else_ } => {
             if truthy(&eval_expr(cond, env)?) {
-                for n in then { eval(n, env, out)?; }
+                for n in then {
+                    eval(n, env, out)?;
+                }
             } else {
-                for n in else_ { eval(n, env, out)?; }
+                for n in else_ {
+                    eval(n, env, out)?;
+                }
             }
             Ok(())
         }
@@ -1146,13 +1147,17 @@ fn eval(node: &Node, env: &mut TemplateEnv, out: &mut String) -> Result<(), Temp
             let arr = match coll {
                 Value::Array(a) => a,
                 Value::Null => Vec::new(),
-                other => return Err(TemplateError::TypeError(format!(
-                    "for-in expects array, got {other}"
-                ))),
+                other => {
+                    return Err(TemplateError::TypeError(format!(
+                        "for-in expects array, got {other}"
+                    )))
+                }
             };
             for item in arr {
                 env.set(var, item);
-                for n in body { eval(n, env, out)?; }
+                for n in body {
+                    eval(n, env, out)?;
+                }
             }
             Ok(())
         }
@@ -1175,9 +1180,13 @@ fn eval_expr(e: &Expr, env: &TemplateEnv) -> Result<Value, TemplateError> {
                 (Value::Object(mut m), Value::String(k)) => m.remove(&k).unwrap_or(Value::Null),
                 (Value::Array(a), Value::Number(n)) => {
                     let idx = n.as_i64().unwrap_or(0) as isize;
-                    a.get(if idx < 0 { (a.len() as isize + idx) as usize } else { idx as usize })
-                        .cloned()
-                        .unwrap_or(Value::Null)
+                    a.get(if idx < 0 {
+                        (a.len() as isize + idx) as usize
+                    } else {
+                        idx as usize
+                    })
+                    .cloned()
+                    .unwrap_or(Value::Null)
                 }
                 _ => Value::Null,
             }
@@ -1193,11 +1202,19 @@ fn eval_expr(e: &Expr, env: &TemplateEnv) -> Result<Value, TemplateError> {
         }
         Expr::And(a, b) => {
             let av = eval_expr(a, env)?;
-            if !truthy(&av) { av } else { eval_expr(b, env)? }
+            if !truthy(&av) {
+                av
+            } else {
+                eval_expr(b, env)?
+            }
         }
         Expr::Or(a, b) => {
             let av = eval_expr(a, env)?;
-            if truthy(&av) { av } else { eval_expr(b, env)? }
+            if truthy(&av) {
+                av
+            } else {
+                eval_expr(b, env)?
+            }
         }
         Expr::Not(a) => Value::Bool(!truthy(&eval_expr(a, env)?)),
         Expr::In(a, b) => {
@@ -1240,12 +1257,17 @@ fn eval_expr(e: &Expr, env: &TemplateEnv) -> Result<Value, TemplateError> {
             }
         }
         Expr::Call(name, args) => {
-            let argv: Vec<Value> = args.iter().map(|a| eval_expr(a, env)).collect::<Result<_, _>>()?;
+            let argv: Vec<Value> = args
+                .iter()
+                .map(|a| eval_expr(a, env))
+                .collect::<Result<_, _>>()?;
             call_function(name, &argv)?
         }
         Expr::List(items) => {
             let mut arr = Vec::new();
-            for it in items { arr.push(eval_expr(it, env)?); }
+            for it in items {
+                arr.push(eval_expr(it, env)?);
+            }
             Value::Array(arr)
         }
         Expr::Dict(items) => {
@@ -1417,7 +1439,10 @@ mod tests {
     fn builtin_chatml() {
         let p = render_builtin(
             BuiltinTemplate::ChatMl,
-            &[ChatMessage::new(Role::System, "S"), ChatMessage::new(Role::User, "Hi")],
+            &[
+                ChatMessage::new(Role::System, "S"),
+                ChatMessage::new(Role::User, "Hi"),
+            ],
             &[],
             true,
         );
@@ -1560,9 +1585,18 @@ mod tests {
 
     #[test]
     fn builtin_name_parse() {
-        assert_eq!(BuiltinTemplate::from_str_ci("gemma-4"), Some(BuiltinTemplate::Gemma));
-        assert_eq!(BuiltinTemplate::from_str_ci("LLAMA-3"), Some(BuiltinTemplate::Llama3));
-        assert_eq!(BuiltinTemplate::from_str_ci("qwen"), Some(BuiltinTemplate::ChatMl));
+        assert_eq!(
+            BuiltinTemplate::from_str_ci("gemma-4"),
+            Some(BuiltinTemplate::Gemma)
+        );
+        assert_eq!(
+            BuiltinTemplate::from_str_ci("LLAMA-3"),
+            Some(BuiltinTemplate::Llama3)
+        );
+        assert_eq!(
+            BuiltinTemplate::from_str_ci("qwen"),
+            Some(BuiltinTemplate::ChatMl)
+        );
         assert_eq!(BuiltinTemplate::from_str_ci("unknown"), None);
     }
 
@@ -1594,13 +1628,7 @@ mod tests {
     #[test]
     fn template_for_loop() {
         let tpl = "{% for m in messages %}{{ m.role }}: {{ m.content }}\n{% endfor %}assistant:";
-        let p = render_template(
-            tpl,
-            &[ChatMessage::new(Role::User, "Hi")],
-            &[],
-            true,
-        )
-        .unwrap();
+        let p = render_template(tpl, &[ChatMessage::new(Role::User, "Hi")], &[], true).unwrap();
         assert!(p.contains("user: Hi"));
         assert!(p.ends_with("assistant:"));
     }

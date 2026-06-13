@@ -10,13 +10,13 @@ authors.workspace = true
 description = "Safe, ergonomic and complete Rust bindings for llama.cpp"
 keywords.workspace = true
 categories.workspace = true
-
-[lib]
-path = "src/lib.rs"
 # Disable Cargo's default file auto-discovery in `../tests/` and
 # declare each integration test explicitly below.
 autotests = false
 autobins = false
+
+[lib]
+path = "src/lib.rs"
 
 [[test]]
 name = "gemma4_text"

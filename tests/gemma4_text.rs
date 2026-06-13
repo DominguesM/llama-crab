@@ -72,11 +72,14 @@ fn gemma4_round_trip_tokenize_detokenize() {
     };
     common::banner("gemma4_round_trip_tokenize_detokenize", &model_path);
 
-    let llama = Llama::load(LlamaParams::new(&model_path).with_n_ctx(512))
-        .expect("failed to load Gemma 4");
+    let llama =
+        Llama::load(LlamaParams::new(&model_path).with_n_ctx(512)).expect("failed to load Gemma 4");
 
     let prompt = "Llama-crab is a Rust binding for llama.cpp";
-    let tokens = llama.model().tokenize(prompt, true, false).expect("tokenize");
+    let tokens = llama
+        .model()
+        .tokenize(prompt, true, false)
+        .expect("tokenize");
     let reconstructed = llama
         .model()
         .detokenize(&tokens, false)
@@ -91,7 +94,10 @@ fn gemma4_round_trip_tokenize_detokenize() {
         if needle.is_empty() {
             continue;
         }
-        let haystack: String = reconstructed.chars().filter(|c| c.is_alphanumeric()).collect();
+        let haystack: String = reconstructed
+            .chars()
+            .filter(|c| c.is_alphanumeric())
+            .collect();
         assert!(
             haystack.to_lowercase().contains(&needle.to_lowercase()),
             "round-trip lost the word {word:?} (have {reconstructed:?})"
@@ -109,10 +115,12 @@ fn gemma4_chat_completion_returns_assistant_message() {
     else {
         return;
     };
-    common::banner("gemma4_chat_completion_returns_assistant_message", &model_path);
+    common::banner(
+        "gemma4_chat_completion_returns_assistant_message",
+        &model_path,
+    );
 
-    let mut llama =
-        Llama::load(LlamaParams::new(&model_path).with_n_ctx(2048)).expect("load");
+    let mut llama = Llama::load(LlamaParams::new(&model_path).with_n_ctx(2048)).expect("load");
     let history = vec![
         ChatMessage::new(Role::System, "You are a concise assistant."),
         ChatMessage::new(Role::User, "Say 'OK' and nothing else."),

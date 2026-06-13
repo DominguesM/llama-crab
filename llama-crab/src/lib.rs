@@ -11,7 +11,9 @@
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
-#![doc(html_logo_url = "https://raw.githubusercontent.com/DominguesM/llama-crab/main/docs/src/assets/logo.png")]
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/DominguesM/llama-crab/main/docs/src/assets/logo.png"
+)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![allow(clippy::needless_doctest_main)]
 // A binding crate has a large public API surface; pedantic lints add
@@ -55,11 +57,11 @@ pub use crate::context::{LlamaContext, LlamaContextParams};
 pub use crate::error::{LlamaError, Result};
 pub use crate::high_level::chat_completion::ChatMessage;
 pub use crate::high_level::completion::{Completion, StopReason};
+pub use crate::high_level::tokenizer::{FimTokens, LlamaTokenizer, Tokenizer};
 pub use crate::high_level::{Llama, LlamaParams};
-pub use crate::log::{LogOptions, send_logs_to_tracing};
+pub use crate::log::{send_logs_to_tracing, LogOptions};
+pub use crate::logit_bias::LlamaLogitBias;
 pub use crate::model::{params::LlamaModelParams, LlamaModel};
 pub use crate::sampling::{LlamaSampler, SamplerChain};
 pub use crate::token::LlamaToken;
 pub use crate::token_data::{LlamaTokenData, LlamaTokenDataArray};
-pub use crate::high_level::tokenizer::{FimTokens, LlamaTokenizer, Tokenizer};
-pub use crate::logit_bias::LlamaLogitBias;

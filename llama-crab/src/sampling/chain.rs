@@ -77,13 +77,7 @@ impl SamplerChain {
 
     /// Add a penalties stage.
     #[must_use]
-    pub fn penalties(
-        mut self,
-        last_n: i32,
-        repeat: f32,
-        freq: f32,
-        present: f32,
-    ) -> Self {
+    pub fn penalties(mut self, last_n: i32, repeat: f32, freq: f32, present: f32) -> Self {
         if let Some(s) = LlamaSampler::penalties(last_n, repeat, freq, present) {
             self.samplers.push(s);
         }
@@ -118,10 +112,7 @@ mod tests {
 
     #[test]
     fn with_no_perf_propagates() {
-        let chain = SamplerChain::new()
-            .with_no_perf(true)
-            .greedy()
-            .build();
+        let chain = SamplerChain::new().with_no_perf(true).greedy().build();
         assert!(chain.is_some());
     }
 

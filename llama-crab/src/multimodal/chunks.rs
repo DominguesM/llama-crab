@@ -21,7 +21,9 @@ impl MtmdInputChunks {
         let handle = unsafe { sys::mtmd_input_chunks_init() };
         NonNull::new(handle)
             .map(|handle| Self { handle })
-            .ok_or(LlamaError::Batch("mtmd_input_chunks_init returned null".into()))
+            .ok_or(LlamaError::Batch(
+                "mtmd_input_chunks_init returned null".into(),
+            ))
     }
 
     /// Number of chunks in the list.

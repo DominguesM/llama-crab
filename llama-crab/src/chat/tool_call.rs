@@ -23,10 +23,7 @@ pub struct ToolDefinition {
 impl ToolDefinition {
     /// Construct a new tool definition.
     #[must_use]
-    pub fn new(
-        name: impl Into<String>,
-        description: impl Into<String>,
-    ) -> Self {
+    pub fn new(name: impl Into<String>, description: impl Into<String>) -> Self {
         Self {
             name: name.into(),
             description: description.into(),
@@ -82,11 +79,7 @@ pub struct ToolCall {
 impl ToolCall {
     /// Construct a new tool call.
     #[must_use]
-    pub fn new(
-        id: impl Into<String>,
-        name: impl Into<String>,
-        arguments: Value,
-    ) -> Self {
+    pub fn new(id: impl Into<String>, name: impl Into<String>, arguments: Value) -> Self {
         Self {
             id: id.into(),
             name: name.into(),
@@ -272,8 +265,7 @@ impl ToolParser {
                             if self.brace_depth <= 0 {
                                 let raw = std::mem::take(&mut self.buffer);
                                 // Try to parse as `[ {...} ]` or `[ {...}, {...} ]`.
-                                if let Ok(Value::Array(items)) =
-                                    serde_json::from_str::<Value>(&raw)
+                                if let Ok(Value::Array(items)) = serde_json::from_str::<Value>(&raw)
                                 {
                                     for item in items {
                                         if let Some(call) = self.parse_call_obj(&item) {

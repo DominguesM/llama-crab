@@ -55,7 +55,10 @@ fn gemma4_vision_question_answering() {
     eprintln!("image: {}x{}", bitmap.nx(), bitmap.ny());
 
     let chunks = mtmd
-        .tokenize(MtmdInputText::new("Describe this image in one sentence."), &[&bitmap])
+        .tokenize(
+            MtmdInputText::new("Describe this image in one sentence."),
+            &[&bitmap],
+        )
         .expect("tokenize");
     assert!(!chunks.is_empty());
 

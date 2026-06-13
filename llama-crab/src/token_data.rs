@@ -13,11 +13,7 @@ impl LlamaTokenData {
     /// Construct from id, logit and probability.
     #[must_use]
     pub fn new(id: LlamaToken, logit: f32, p: f32) -> Self {
-        Self(sys::llama_token_data {
-            id: id.0,
-            logit,
-            p,
-        })
+        Self(sys::llama_token_data { id: id.0, logit, p })
     }
 
     /// Token id.

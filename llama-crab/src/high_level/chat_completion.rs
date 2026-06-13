@@ -5,8 +5,8 @@ use crate::error::Result;
 
 use super::completion::create_completion;
 use super::Llama;
-use crate::chat::{render_builtin, BuiltinTemplate, ToolDefinition};
 pub use crate::chat::ChatMessage;
+use crate::chat::{render_builtin, BuiltinTemplate, ToolDefinition};
 
 /// Run a single-turn chat completion with the **Plain** template.
 pub fn create_chat_completion(

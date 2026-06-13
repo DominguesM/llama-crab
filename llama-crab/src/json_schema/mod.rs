@@ -130,7 +130,8 @@ impl SchemaConverter {
         }
         if let Some(Value::Object(defs)) = schema.get("definitions") {
             for (k, v) in defs {
-                self.definitions.insert(format!("#/definitions/{k}"), v.clone());
+                self.definitions
+                    .insert(format!("#/definitions/{k}"), v.clone());
             }
         }
 
@@ -191,10 +192,7 @@ impl SchemaConverter {
         }
 
         // type-driven -----------------------------------------------------------
-        let ty = schema
-            .get("type")
-            .and_then(|v| v.as_str())
-            .unwrap_or("any");
+        let ty = schema.get("type").and_then(|v| v.as_str()).unwrap_or("any");
         let body = match ty {
             "string" => self.build_string(schema)?,
             "integer" | "number" => self.build_number(schema)?,
@@ -215,7 +213,11 @@ impl SchemaConverter {
             self.visit(s, &n)?;
             names.push(n);
         }
-        let sep = if any_of { " | " } else { " | " /* best-effort */ };
+        let sep = if any_of {
+            " | "
+        } else {
+            " | " /* best-effort */
+        };
         Ok(names.join(sep))
     }
 
@@ -244,7 +246,8 @@ impl SchemaConverter {
                 }
                 "email" => {
                     let name = self.fresh_name("email");
-                    let body = r#"\"" [a-zA-Z0-9._%+-]+ "@" [a-zA-Z0-9.-]+ "." [a-zA-Z]{2,} "\"""#.to_string();
+                    let body = r#"\"" [a-zA-Z0-9._%+-]+ "@" [a-zA-Z0-9.-]+ "." [a-zA-Z]{2,} "\"""#
+                        .to_string();
                     self.rules.insert(name.clone(), body);
                     return Ok(name);
                 }
@@ -302,9 +305,10 @@ impl SchemaConverter {
     }
 
     fn build_array(&mut self, schema: &Value) -> Result<String> {
-        let items = schema.get("items").cloned().unwrap_or(Value::Object(
-            serde_json::Map::new(),
-        ));
+        let items = schema
+            .get("items")
+            .cloned()
+            .unwrap_or(Value::Object(serde_json::Map::new()));
         let item_name = self.fresh_name("arr-item");
         self.visit(&items, &item_name)?;
 
@@ -326,9 +330,7 @@ impl SchemaConverter {
         if max_items > min_items {
             let lo = 0_usize;
             let hi = (max_items - min_items) as usize;
-            body.push_str(&format!(
-                r#" ( "","" {item_name} ){{{lo},{hi}}} "#,
-            ));
+            body.push_str(&format!(r#" ( "","" {item_name} ){{{lo},{hi}}} "#,));
         }
         body.push_str(r#"]""#);
         self.rules.insert(name.clone(), body);
@@ -380,12 +382,7 @@ impl SchemaConverter {
             // Quote the key as a JSON string literal.
             let quoted_key = serde_json::to_string(k).unwrap_or_default();
             let _ = quoted_key;
-            write!(
-                &mut body,
-                " \"{}\" \":\" {v}",
-                quoted_key.trim_matches('"'),
-            )
-            .unwrap();
+            write!(&mut body, " \"{}\" \":\" {v}", quoted_key.trim_matches('"'),).unwrap();
         }
         // Add optional trailing separators
         if !pairs.is_empty() {
@@ -463,7 +460,10 @@ fn escape_gbnf(s: &str) -> String {
 /// Useful when you want a grammar-restricted sampler but don't have a
 /// schema in hand.
 pub fn any_value_grammar() -> String {
-    format!("{root} ::= value\nvalue ::= string | number | boolean | null | array | object\n", root = "root")
+    format!(
+        "{root} ::= value\nvalue ::= string | number | boolean | null | array | object\n",
+        root = "root"
+    )
 }
 
 /// Helper for the common case "I want a JSON object grammar".

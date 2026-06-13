@@ -118,7 +118,11 @@ impl LlamaModel {
             prefix: LlamaToken(pre),
             suffix: LlamaToken(suf),
             middle: LlamaToken(mid),
-            eot: if eot_raw >= 0 { Some(LlamaToken(eot_raw)) } else { None },
+            eot: if eot_raw >= 0 {
+                Some(LlamaToken(eot_raw))
+            } else {
+                None
+            },
         })
     }
 

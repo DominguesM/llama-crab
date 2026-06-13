@@ -4,11 +4,11 @@
 use llama_crab_sys as sys;
 
 #[allow(unused_imports)]
+use super::LlamaSampler;
+#[allow(unused_imports)]
 use crate::model::LlamaModel;
 #[allow(unused_imports)]
 use crate::token::LlamaToken;
-#[allow(unused_imports)]
-use super::LlamaSampler;
 
 impl LlamaSampler {
     /// Always pick the highest-probability token.
@@ -158,10 +158,7 @@ impl LlamaSampler {
     ///
     /// # Safety
     /// The `biases` slice must outlive the sampler.
-    pub unsafe fn logit_bias(
-        n_vocab: i32,
-        biases: &[sys::llama_logit_bias],
-    ) -> Option<Self> {
+    pub unsafe fn logit_bias(n_vocab: i32, biases: &[sys::llama_logit_bias]) -> Option<Self> {
         let p = unsafe {
             sys::llama_sampler_init_logit_bias(n_vocab, biases.len() as i32, biases.as_ptr())
         };
