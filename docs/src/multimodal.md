@@ -45,13 +45,17 @@ let new_n_past = unsafe {
 let mut sampler = LlamaSampler::greedy().unwrap();
 let mut out = String::new();
 let eos = llama.model().token_eos();
+let mut next_pos = new_n_past;
 for _ in 0..64 {
-    let tok: LlamaToken = unsafe { sampler.sample(ctx_ptr, new_n_past - 1) };
+    let tok: LlamaToken = unsafe { sampler.sample(ctx_ptr, -1) };
     sampler.accept(tok);
     if tok == eos { break; }
     if let Ok(piece) = llama.model().detokenize(&[tok], false) {
         out.push_str(&piece);
     }
+    let single = llama_crab::batch::LlamaBatch::one(tok, next_pos, 0, true);
+    llama.context().decode(&single)?;
+    next_pos += 1;
 }
 println!("{out}");
 # }
@@ -59,11 +63,11 @@ println!("{out}");
 
 ## Tested models
 
-| Model                                                       | Status          |
-|-------------------------------------------------------------|-----------------|
-| `lmstudio-community/gemma-4-E4B-it-GGUF`                    | ✅              |
-| `unsloth/LFM2.5-VL-1.6B-GGUF`                                | ✅              |
-| `Qwen2.5-VL`, `Llama-3.2-Vision`, `LLaVA-1.5/1.6`, etc.     | ✅ (via mtmd)   |
+| Model                                                   | Status        |
+| ------------------------------------------------------- | ------------- |
+| `lmstudio-community/gemma-4-E4B-it-GGUF`                | ✅            |
+| `unsloth/LFM2.5-VL-1.6B-GGUF`                           | ✅            |
+| `Qwen2.5-VL`, `Llama-3.2-Vision`, `LLaVA-1.5/1.6`, etc. | ✅ (via mtmd) |
 
 See `examples/vision/` for a runnable program and the `tests/`
 folder for the integration test suite.

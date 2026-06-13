@@ -7,7 +7,8 @@
 
 #![cfg(feature = "mtmd")]
 
-use llama_crab::multimodal::{MtmdBitmap, MtmdContext, MtmdInputText};
+use llama_crab::batch::LlamaBatch;
+use llama_crab::multimodal::{default_media_marker, MtmdBitmap, MtmdContext, MtmdInputText};
 use llama_crab::sampling::LlamaSampler;
 use llama_crab::token::LlamaToken;
 use llama_crab::{Llama, LlamaParams};
@@ -54,11 +55,12 @@ fn gemma4_vision_question_answering() {
     let bitmap = MtmdBitmap::from_file(&image_path).expect("decode image");
     eprintln!("image: {}x{}", bitmap.nx(), bitmap.ny());
 
+    let prompt = format!(
+        "{}\nDescribe this image in one sentence.",
+        default_media_marker()
+    );
     let chunks = mtmd
-        .tokenize(
-            MtmdInputText::new("Describe this image in one sentence."),
-            &[&bitmap],
-        )
+        .tokenize(MtmdInputText::new(&prompt), &[&bitmap])
         .expect("tokenize");
     assert!(!chunks.is_empty());
 
@@ -74,8 +76,9 @@ fn gemma4_vision_question_answering() {
     let mut sampler = LlamaSampler::greedy().expect("greedy");
     let mut out = String::new();
     let eos = llama.model().token_eos();
+    let mut n_generated = 0_usize;
     for _ in 0..64 {
-        let tok: LlamaToken = unsafe { sampler.sample(ctx_ptr, new_n_past - 1) };
+        let tok: LlamaToken = unsafe { sampler.sample(ctx_ptr, -1) };
         sampler.accept(tok);
         if tok == eos {
             break;
@@ -83,7 +86,13 @@ fn gemma4_vision_question_answering() {
         if let Ok(piece) = llama.model().detokenize(&[tok], false) {
             out.push_str(&piece);
         }
+        let single = LlamaBatch::one(tok, new_n_past + n_generated as i32, 0, true);
+        llama
+            .context()
+            .decode(&single)
+            .expect("decode generated token");
+        n_generated += 1;
     }
     eprintln!("Gemma 4 vision answer ({:?}): {:?}", start.elapsed(), out);
-    assert!(!out.is_empty());
+    assert!(!out.trim().is_empty());
 }

@@ -13,13 +13,13 @@ use std::path::{Path, PathBuf};
 pub const GEMMA4_DEFAULT_PATH: &str = "models/gemma-4-E4B-it-Q4_K_M.gguf";
 
 /// Default location for the Gemma 4 multimodal projector.
-pub const GEMMA4_MMPROJ_DEFAULT_PATH: &str = "models/gemma-4-E4B-it-mmproj.gguf";
+pub const GEMMA4_MMPROJ_DEFAULT_PATH: &str = "models/mmproj-gemma-4-E4B-it-BF16.gguf";
 
 /// Default location for the LFM2.5-VL GGUF.
 pub const LFM_VL_DEFAULT_PATH: &str = "models/LFM2.5-VL-1.6B-Q4_K_M.gguf";
 
 /// Default location for the LFM2.5-VL multimodal projector.
-pub const LFM_VL_MMPROJ_DEFAULT_PATH: &str = "models/LFM2.5-VL-1.6B-mmproj.gguf";
+pub const LFM_VL_MMPROJ_DEFAULT_PATH: &str = "models/LFM2.5-VL-1.6B-mmproj-BF16.gguf";
 
 /// Default location for a small test image (256×256 PNG).
 pub const TEST_IMAGE_DEFAULT_PATH: &str = "tests/fixtures/test_image.png";
@@ -36,6 +36,10 @@ pub fn resolve_path(env_var: &str, default: &str) -> Option<PathBuf> {
     let path = PathBuf::from(default);
     if path.exists() {
         return Some(path);
+    }
+    let workspace_path = PathBuf::from("..").join(default);
+    if workspace_path.exists() {
+        return Some(workspace_path);
     }
     None
 }

@@ -28,13 +28,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut sampler = LlamaSampler::greedy().unwrap();
     let mut out = String::new();
     let eos = llama.model().token_eos();
+    let mut next_pos = new_n_past;
     for _ in 0..128 {
-        let tok: LlamaToken = unsafe { sampler.sample(ctx_ptr, new_n_past - 1) };
+        let tok: LlamaToken = unsafe { sampler.sample(ctx_ptr, -1) };
         sampler.accept(tok);
         if tok == eos { break; }
         if let Ok(piece) = llama.model().detokenize(&[tok], false) {
             out.push_str(&piece);
         }
+        let single = llama_crab::batch::LlamaBatch::one(tok, next_pos, 0, true);
+        llama.context().decode(&single)?;
+        next_pos += 1;
     }
     println!("assistant> {out}");
     Ok(())

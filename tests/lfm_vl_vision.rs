@@ -13,10 +13,12 @@
 
 #![cfg(feature = "mtmd")]
 
+use llama_crab::batch::LlamaBatch;
+use llama_crab::chat::{render_builtin, BuiltinTemplate, ChatMessage};
 use llama_crab::multimodal::{MtmdBitmap, MtmdContext, MtmdInputText};
 use llama_crab::sampling::LlamaSampler;
 use llama_crab::token::LlamaToken;
-use llama_crab::{Llama, LlamaParams};
+use llama_crab::{Llama, LlamaParams, Role};
 use std::time::Instant;
 
 mod common;
@@ -79,11 +81,18 @@ fn lfm_vl_vision_question_answering() {
     assert!(!bitmap.is_audio());
 
     // 4. Tokenize a prompt + image together.
+    let marker = llama_crab::multimodal::default_media_marker();
+    let prompt = render_builtin(
+        BuiltinTemplate::ChatMl,
+        &[ChatMessage::new(
+            Role::User,
+            format!("{marker}\nWhat do you see in this image? Answer briefly."),
+        )],
+        &[],
+        true,
+    );
     let chunks = mtmd
-        .tokenize(
-            MtmdInputText::new("What do you see in this image? Answer briefly."),
-            &[&bitmap],
-        )
+        .tokenize(MtmdInputText::new(&prompt), &[&bitmap])
         .expect("tokenize");
     eprintln!("tokenized into {} chunks", chunks.len());
     assert!(!chunks.is_empty(), "should produce at least one chunk");
@@ -102,8 +111,9 @@ fn lfm_vl_vision_question_answering() {
     let mut sampler = LlamaSampler::greedy().expect("greedy");
     let mut out = String::new();
     let eos = llama.model().token_eos();
+    let mut n_generated = 0_usize;
     for _ in 0..64 {
-        let tok: LlamaToken = unsafe { sampler.sample(ctx_ptr, new_n_past - 1) };
+        let tok: LlamaToken = unsafe { sampler.sample(ctx_ptr, -1) };
         sampler.accept(tok);
         if tok == eos {
             break;
@@ -111,8 +121,17 @@ fn lfm_vl_vision_question_answering() {
         if let Ok(piece) = llama.model().detokenize(&[tok], false) {
             out.push_str(&piece);
         }
+        let single = LlamaBatch::one(tok, new_n_past + n_generated as i32, 0, true);
+        llama
+            .context()
+            .decode(&single)
+            .expect("decode generated token");
+        n_generated += 1;
     }
     let elapsed = start.elapsed();
     eprintln!("vision answer ({:?}): {:?}", elapsed, out);
-    assert!(!out.is_empty(), "vision model should produce text");
+    assert!(
+        !out.trim().is_empty(),
+        "vision model should produce non-whitespace text"
+    );
 }

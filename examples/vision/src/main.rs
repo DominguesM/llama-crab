@@ -57,7 +57,11 @@ fn main() -> Result<()> {
     // Prepend the default media marker so `mtmd_tokenize` knows where
     // to insert the image tokens in the prompt.
     let marker = default_media_marker();
-    let media_prompt = format!("{marker}\n{prompt}");
+    let media_prompt = if model.to_ascii_lowercase().contains("lfm") {
+        format!("<|im_start|>user\n{marker}\n{prompt}<|im_end|>\n<|im_start|>assistant\n")
+    } else {
+        format!("{marker}\n{prompt}")
+    };
     let chunks = mtmd.tokenize(MtmdInputText::new(&media_prompt), &[&bitmap])?;
     eprintln!("Produced {} chunks", chunks.len());
 
@@ -75,12 +79,12 @@ fn main() -> Result<()> {
     let mut out = String::new();
     let eos = llama.model().token_eos();
     // Greedy sample, feed each token back so the next iteration samples
-    // from a fresh forward pass. `n_generated == 0` ⇒ logits are at
-    // index `new_n_past - 1`; thereafter the 1-token batch has logits
+    // from a fresh forward pass. After multimodal eval, sample from the
+    // last emitted logits with `-1`; thereafter the 1-token batch has logits
     // at index 0.
     let mut n_generated = 0_usize;
     for _ in 0..128 {
-        let idx = if n_generated == 0 { new_n_past - 1 } else { 0 };
+        let idx = if n_generated == 0 { -1 } else { 0 };
         let tok: LlamaToken = unsafe { sampler.sample(ctx_ptr, idx) };
         sampler.accept(tok);
         if tok == eos {

@@ -159,20 +159,14 @@ fn ask(
     use llama_crab::chat::render_builtin;
     use llama_crab::chat::BuiltinTemplate;
 
-    // Render the conversation to a prompt string, then strip the
-    // history down to just the last user message + an `<image>` tag
-    // for the multimodal eval.
-    let prompt = render_builtin(BuiltinTemplate::Plain, history, &[], true);
-
-    // Find the last user turn and prepend the media marker so mtmd
-    // knows where to splice the image tokens.
-    let last_user = history
-        .iter()
-        .rfind(|m| m.role == Role::User)
-        .map(|m| m.content.clone())
-        .unwrap_or_default();
+    // Render the conversation using LFM's ChatML-style template, with
+    // the media marker inserted into the latest user turn.
     let marker = default_media_marker();
-    let media_prompt = format!("{marker}\n{last_user}");
+    let mut prompt_history = history.to_vec();
+    if let Some(last_user) = prompt_history.iter_mut().rfind(|m| m.role == Role::User) {
+        last_user.content = format!("{marker}\n{}", last_user.content);
+    }
+    let media_prompt = render_builtin(BuiltinTemplate::ChatMl, &prompt_history, &[], true);
 
     // Decode the image.
     let bitmap = MtmdBitmap::from_file(image)
@@ -187,13 +181,14 @@ fn ask(
     let new_n_past = unsafe { chunks.eval(mtmd, ctx_ptr, 0, 0, n_batch, true) }
         .map_err(|e| anyhow::anyhow!("chunks.eval: {e}"))?;
 
-    // Greedy decode.
+    // Greedy decode. After multimodal eval, sample from the last emitted
+    // logits with `-1`; after that every 1-token batch has logits at index 0.
     let mut sampler = LlamaSampler::greedy().expect("greedy");
     let eos = llama.model().token_eos();
     let mut out = String::new();
     let mut n_generated = 0_usize;
     for _ in 0..256 {
-        let idx = if n_generated == 0 { new_n_past - 1 } else { 0 };
+        let idx = if n_generated == 0 { -1 } else { 0 };
         let tok: LlamaToken = unsafe { sampler.sample(ctx_ptr, idx) };
         sampler.accept(tok);
         if tok == eos {
@@ -206,11 +201,5 @@ fn ask(
         llama.context().decode(&single)?;
         n_generated += 1;
     }
-    // `prompt` is kept alive to document that the rendered chat template
-    // matches the multimodal prompt; the eval above already used
-    // `media_prompt`. We discard it here to satisfy the linter without
-    // an extra log line.
-    let _ = prompt;
-
     Ok(out.trim().to_string())
 }
