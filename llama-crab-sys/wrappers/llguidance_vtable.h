@@ -1,5 +1,5 @@
-// Stub for the llguidance vtable. Real implementation in v0.2 once the
-// `llguidance` Rust crate is wired in.
+// Reserved llguidance vtable bridge. Not included by wrapper.h until
+// registration is backed by a real upstream implementation.
 
 #pragma once
 

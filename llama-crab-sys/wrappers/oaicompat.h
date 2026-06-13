@@ -1,5 +1,5 @@
-// C-ABI bridge for `common::chat::*` (chat templates + OAI-compat).
-// Thin shim exposing `llama_rs_apply_chat_template_oaicompat` etc.
+// Reserved C-ABI bridge for `common::chat::*` (chat templates + OAI-compat).
+// Not included by wrapper.h until it is backed by upstream implementation.
 
 #pragma once
 
@@ -16,9 +16,10 @@ typedef enum {
     LLAMA_RS_INVALID_ARGUMENT = 1,
     LLAMA_RS_ALLOCATION_FAILED = 2,
     LLAMA_RS_EXCEPTION = 3,
+    LLAMA_RS_UNSUPPORTED = 4,
 } llama_rs_status;
 
-// v0.1 stub — full implementation in v0.2.
+// v0.1.300 compatibility stub. Returns LLAMA_RS_UNSUPPORTED.
 llama_rs_status llama_rs_apply_chat_template_oaicompat(
     const char * tmpl,
     const char * messages_json,

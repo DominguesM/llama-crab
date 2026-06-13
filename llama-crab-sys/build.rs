@@ -3,7 +3,7 @@
 //! Responsibilities (in order):
 //! 1. Detect host platform, target architecture and supported backends.
 //! 2. Configure CMake build of `llama.cpp` (`LLAMA_BUILD_TESTS=OFF`, etc.).
-//! 3. Compile additional C++ wrappers (chat templates, JSON schema, multimodal).
+//! 3. Compile additional C++ wrappers only when they are backed by upstream code.
 //! 4. Run `bindgen` over `wrapper.h` to generate Rust FFI bindings.
 //! 5. Emit `cargo:` directives to wire up include dirs, lib paths and link flags.
 //!
@@ -137,7 +137,7 @@ fn main() {
         build_llama_cpp(&manifest_dir, &out_dir, &features, os)
     };
 
-    // 3. Compile the C++ wrapper objects (chat, oaicompat, mtmd helpers).
+    // 3. Compile the C++ wrapper objects that are backed by upstream code.
     if !features.dynamic_link {
         build_cpp_wrappers(&manifest_dir, &out_dir, &features);
     }
@@ -221,10 +221,7 @@ fn run_bindgen(manifest_dir: &PathBuf, features: &Features) -> bindgen::Bindings
         .clang_arg("-DGGML_BACKEND_DL_DISABLE");
 
     if features.common {
-        builder = builder
-            .clang_arg(format!("-I{}", llcpp.join("common").display()))
-            .allowlist_function("llama_rs_.*")
-            .allowlist_type("llama_rs_.*");
+        builder = builder.clang_arg(format!("-I{}", llcpp.join("common").display()));
     }
 
     if features.mtmd {
@@ -235,19 +232,28 @@ fn run_bindgen(manifest_dir: &PathBuf, features: &Features) -> bindgen::Bindings
             .clang_arg(format!("-I{}", llcpp.join("vendor").display()))
             .allowlist_function("mtmd_.*")
             .allowlist_function("mtmd_helper_.*")
+            .blocklist_function("mtmd_helper_video_.*")
             .allowlist_type("mtmd_.*")
             .allowlist_type("mtmd_input_chunk_type")
             // Block C++ standard-library templates that bindgen can't express.
             .blocklist_type("std___1__.*")
             .blocklist_type("_Pointer")
+            .blocklist_type("mtmd_helper::.*")
+            .blocklist_type("mtmd_helper_mtmd_helper_video_deleter")
+            .blocklist_type("mtmd_helper_video_ptr")
+            .blocklist_item("mtmd_helper::.*")
+            .blocklist_item("mtmd_helper_mtmd_helper_video_deleter")
+            .blocklist_item("mtmd_helper_video_ptr")
             .opaque_type("std::.*");
     }
 
     if features.llguidance {
-        // llguidance is wired via a custom C-ABI vtable; we only need a stub.
-        builder = builder
-            .clang_arg("-DLLGUIDANCE_ENABLED")
-            .allowlist_function("llg_.*");
+        // Do not expose the local llguidance registration shim until it is
+        // backed by the upstream llguidance library. The feature is accepted
+        // for build compatibility, but no llg_* surface is published here.
+        eprintln!(
+            "cargo:warning=llama-crab-sys: llguidance feature has no C-ABI surface in v0.1.300"
+        );
     }
 
     if cfg!(target_os = "macos") {
@@ -487,7 +493,7 @@ fn discover_libs(install: &PathBuf) -> Vec<PathBuf> {
 }
 
 // ---------------------------------------------------------------------------
-// C++ wrapper compilation (chat templates, oaicompat, mtmd helpers, llguidance)
+// C++ wrapper compilation
 // ---------------------------------------------------------------------------
 
 fn build_cpp_wrappers(manifest_dir: &PathBuf, out_dir: &PathBuf, features: &Features) {
@@ -516,23 +522,11 @@ fn build_cpp_wrappers(manifest_dir: &PathBuf, out_dir: &PathBuf, features: &Feat
         file_count += 1;
     }
     if features.common {
-        let oai = manifest_dir.join("wrappers/oaicompat.cpp");
-        if oai.is_file() {
-            build.file(oai);
-            file_count += 1;
-        }
-        let grammar = manifest_dir.join("wrappers/grammar.cpp");
-        if grammar.is_file() {
-            build.file(grammar);
-            file_count += 1;
-        }
+        // v0.1.300 intentionally does not compile local llama_rs_* common
+        // shims. They were placeholders and could report success without
+        // invoking the real upstream common implementation.
     }
     if features.mtmd {
-        let path = manifest_dir.join("wrappers/mtmd_helpers.cpp");
-        if path.is_file() {
-            build.file(path);
-            file_count += 1;
-        }
         // The mtmd library itself (a C++ source tree under `tools/mtmd`).
         // We add its sources directly via `cc::Build` (the parent CMake build
         // skips it because `LLAMA_BUILD_TOOLS=OFF`).
@@ -567,11 +561,8 @@ fn build_cpp_wrappers(manifest_dir: &PathBuf, out_dir: &PathBuf, features: &Feat
         }
     }
     if features.llguidance {
-        let path = manifest_dir.join("wrappers/llguidance_vtable.cpp");
-        if path.is_file() {
-            build.file(path);
-            file_count += 1;
-        }
+        // No local llguidance vtable shim is compiled until registration is
+        // wired to a real upstream implementation.
     }
 
     if file_count > 0 {

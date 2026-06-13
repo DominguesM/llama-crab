@@ -1,9 +1,8 @@
 //! OpenAI-compatible chat template rendering (function-calling aware).
 //!
-//! The C-side shim is the
-//! `llama_rs_apply_chat_template_oaicompat` symbol exposed by
-//! `wrappers/oaicompat.cpp`. This module provides the Rust-side glue that
-//! prepares JSON inputs and decodes the outputs.
+//! The current implementation is pure Rust. Placeholder C-ABI shims are kept
+//! out of the public `llama-crab-sys` bindings until they are backed by
+//! upstream implementations.
 //!
 //! Only available when the `common` cargo feature is enabled.
 
@@ -56,10 +55,8 @@ pub struct ChatTemplateResult {
     pub additional_stops: Vec<String>,
 }
 
-/// Render messages + tools into a final prompt using llama.cpp's OAI
-/// chat-template path. Currently uses the pure-Rust path; once the
-/// `common` feature is enabled and the upstream library is linked this
-/// will route through the C++ implementation automatically.
+/// Render messages + tools into a final prompt using the Rust OAI-compatible
+/// fallback path.
 pub fn apply_chat_template_oaicompat(
     params: OpenAIChatTemplateParams<'_>,
 ) -> Result<ChatTemplateResult> {

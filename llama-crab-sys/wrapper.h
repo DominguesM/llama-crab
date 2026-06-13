@@ -1,7 +1,7 @@
 // Master header included by bindgen.
 //
-// The `common` feature pulls in additional headers exposing our C++ helpers
-// (chat template, OpenAI-compat parsing, JSON-schema-to-grammar, etc.).
+// Optional local helper headers are only included here after they are backed by
+// upstream implementations. Placeholder llama_rs_* shims stay out of bindgen.
 
 #pragma once
 
@@ -10,17 +10,7 @@
 #include <ggml-backend.h>
 #include <gguf.h>
 
-#if defined(LLAMA_CRAB_HAS_COMMON)
-#  include "wrappers/grammar.h"
-#  include "wrappers/oaicompat.h"
-#endif
-
 #if defined(LLAMA_CRAB_HAS_MTMD)
 #  include <mtmd.h>
 #  include <mtmd-helper.h>
-#  include "wrappers/mtmd_helpers.h"
-#endif
-
-#if defined(LLAMA_CRAB_HAS_LLGUIDANCE)
-#  include "wrappers/llguidance_vtable.h"
 #endif
