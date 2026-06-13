@@ -39,6 +39,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+## Documentation
+
+The full user guide lives in [`docs/`](docs/) as an [mdBook]. Run it
+locally with:
+
+```bash
+mdbook serve docs/    # http://localhost:3000
+```
+
+Or browse the API docs at <https://docs.rs/llama-crab>.
+
+[mdBook]: https://rust-lang.github.io/mdBook/
+
 ## Examples
 
 The repo ships with 12 runnable examples in [`examples/`](examples/README.md):

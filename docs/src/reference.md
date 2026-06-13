@@ -49,5 +49,5 @@ llama-crab/
 
 ## MSRV
 
-`1.85.0` — pinned via `rust-toolchain.toml`. Bumping the MSRV is a
+`1.88.0` — pinned via `rust-toolchain.toml`. Bumping the MSRV is a
 breaking change and will be a major version bump.

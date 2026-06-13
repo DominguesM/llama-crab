@@ -9,7 +9,7 @@ Thanks for your interest! 🎉
    git clone --recursive https://github.com/DominguesM/llama-crab.git
    cd llama-crab
    ```
-2. Make sure you have **Rust 1.80+**, **CMake 3.18+**, **Clang 14+** installed.
+2. Make sure you have **Rust 1.88+** (see MSRV below), **CMake 3.18+**, **Clang 14+** installed.
 3. Build:
    ```bash
    cargo build --workspace --all-features
@@ -31,3 +31,9 @@ Thanks for your interest! 🎉
 - Prefer strongly typed enums over `i32` constants
 - Errors implement `std::error::Error + Send + Sync` via `thiserror`
 - `unsafe` is **only** allowed in `llama-crab-sys`; the safe crate is 100% safe
+
+## MSRV
+
+The Minimum Supported Rust Version is **1.88** and is pinned by
+`rust-toolchain.toml`. Bumping the MSRV is a **breaking change** and
+requires a major version bump — keep new code buildable on 1.88.
