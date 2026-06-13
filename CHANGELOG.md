@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Expanded mdBook user guide coverage with new chapters for backends,
+  embeddings and reranking, speculative decoding, caching and session
+  state, stateful chat and troubleshooting.
+- Added dedicated mdBook pages for the `quickstart`, `stateful_chat`,
+  `embeddings`, `embedding_search`, `reranker`, `mtmd` and
+  `speculative` examples, plus a consolidated examples overview.
 - New one-command examples workflow with `examples/run.sh`, including
   automatic model resolution for text, embedding and multimodal demos.
 - New runnable examples:
@@ -23,6 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Release workflow now waits for the `llama-crab-sys` crate to become
+  visible in the crates.io index before publishing `llama-crab`.
+- Automated `llama.cpp` updates now run weekly, record the resolved
+  upstream tag in the workflow environment and create PRs with the
+  target tag in the title.
+- README and contributor docs now point users to the mdBook guide and
+  document the Rust 1.88 MSRV.
 - Project license changed from dual `MIT OR Apache-2.0` to MIT-only.
 - Example documentation now describes the downloadable GGUF model set
   and the new one-command workflow.
@@ -36,6 +49,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- High-level completion now tokenizes with model-special tokens enabled
+  and stops on either EOS or EOT.
+- Embedding generation now clears sequence 0 before encoding, requests
+  embeddings for every token in the batch and reads the sequence-level
+  embedding output.
+- Grammar sampler initialization now passes the model vocabulary handle
+  required by the current `llama.cpp` API.
+- JSON-Schema grammar generation now escapes object property names
+  correctly and uses a smaller default unbounded string length.
+- Vision examples, docs and integration tests now feed generated tokens
+  back into the context after multimodal prompt evaluation and sample
+  from the current logits with `-1`.
+- Gemma 4 and LFM2.5-VL vision tests now use updated projector fixture
+  names and resolve fixtures from the workspace parent when needed.
+- Tool-call documentation now escapes literal pipe tokens in markdown
+  tables so mdBook does not split model control tokens into extra
+  columns.
 - Text completion, FIM and multimodal sampling now clear sequence 0
   before each high-level call and sample from the current batch logits
   after the initial decode.
