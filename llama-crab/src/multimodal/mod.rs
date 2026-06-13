@@ -7,6 +7,8 @@
 //!
 //! Top-level types: [`MtmdContext`], [`MtmdBitmap`], [`MtmdInputText`],
 //! [`MtmdInputChunks`], [`MtmdInputChunk`], [`MtmdContextParams`].
+//! Use [`default_media_marker`] to discover the placeholder string that
+//! must appear in the prompt.
 //!
 //! # Example
 //!
@@ -31,4 +33,4 @@ mod context;
 
 pub use bitmap::{MtmdBitmap, MtmdInputText};
 pub use chunks::{MtmdInputChunk, MtmdInputChunks};
-pub use context::{MtmdContext, MtmdContextParams};
+pub use context::{default_media_marker, MtmdContext, MtmdContextParams};

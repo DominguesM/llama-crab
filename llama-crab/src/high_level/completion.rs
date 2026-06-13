@@ -33,7 +33,15 @@ pub enum StopReason {
 /// This is the simplest possible inference loop: tokenize → decode the prompt
 /// → sample → decode one token at a time. For more control, use the lower
 /// level [`crate::LlamaContext`] / [`crate::sampling::LlamaSampler`] APIs.
+///
+/// The KV cache for sequence 0 is cleared before each call, so each call is
+/// independent (matching `llama-cpp-python` semantics). For multi-turn
+/// conversations, build the full history into the prompt and call again.
 pub fn create_completion(llama: &mut Llama, prompt: &str, max_tokens: usize) -> Result<Completion> {
+    // Clear sequence 0 so the new batch can start at position 0 regardless
+    // of any previous decode. p0 = p1 = -1 means "the entire range".
+    let _ = llama.context().seq_rm(0, -1, -1);
+
     let tokens = llama.model().tokenize(prompt, true, false)?;
 
     // Build a batch with the prompt; only the last token produces logits.
@@ -57,7 +65,16 @@ pub fn create_completion(llama: &mut Llama, prompt: &str, max_tokens: usize) -> 
     let mut stop_reason = StopReason::Length;
 
     for _ in 0..max_tokens {
-        let next = unsafe { sampler.sample(ctx_ptr, last_pos - 1) };
+        // `idx` is the index in the *current* batch whose logits we sample
+        // from. For the initial prompt (all tokens in one batch) the logits
+        // are at the last position. For every subsequent single-token batch
+        // the logits are at index 0.
+        let idx = if n_generated == 0 {
+            (tokens.len() as i32) - 1
+        } else {
+            0
+        };
+        let next = unsafe { sampler.sample(ctx_ptr, idx) };
         sampler.accept(next);
         if next == eos {
             stop_reason = StopReason::Eos;

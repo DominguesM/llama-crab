@@ -23,8 +23,8 @@ use std::path::{Path, PathBuf};
 use crate::backend::LlamaBackend;
 use crate::context::{LlamaContext, LlamaContextParams};
 use crate::error::Result;
-use crate::model::LlamaModel;
 use crate::model::params::LlamaModelParams;
+use crate::model::LlamaModel;
 
 pub use self::chat_completion::{create_chat_completion, ChatMessage};
 pub use self::completion::{create_completion, Completion, StopReason};
@@ -158,6 +158,13 @@ impl LlamaParams {
     #[must_use]
     pub fn with_n_threads_batch(mut self, n: i32) -> Self {
         self.context = self.context.with_n_threads_batch(n);
+        self
+    }
+
+    /// Configure the pooling type (used by embedding models).
+    #[must_use]
+    pub fn with_pooling_type(mut self, p: crate::context::params::PoolingType) -> Self {
+        self.context = self.context.with_pooling_type(p);
         self
     }
 }

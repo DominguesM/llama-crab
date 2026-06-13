@@ -130,12 +130,7 @@ impl LlamaModel {
     ///
     /// # Errors
     /// Returns an error if a null byte is present in `text`.
-    pub fn tokenize(
-        &self,
-        text: &str,
-        add_bos: bool,
-        special: bool,
-    ) -> Result<Vec<LlamaToken>> {
+    pub fn tokenize(&self, text: &str, add_bos: bool, special: bool) -> Result<Vec<LlamaToken>> {
         let bytes = text.as_bytes();
         // First call: query the required size by passing a tiny buffer.
         let mut buf: Vec<i32> = vec![0; bytes.len().saturating_add(8)];
@@ -175,6 +170,12 @@ impl LlamaModel {
     }
 
     /// Detokenize a slice of tokens into a `String`.
+    ///
+    /// UTF-8 decoding is **lossy**: bytes that do not form a valid UTF-8
+    /// sequence are replaced with the Unicode replacement character
+    /// (`U+FFFD`). This matches `llama.cpp` and `llama-cpp-python`: BPE
+    /// tokenizers can emit individual tokens whose raw bytes are not
+    /// valid UTF-8, especially around non-Latin scripts and emoji.
     pub fn detokenize(&self, tokens: &[LlamaToken], special: bool) -> Result<String> {
         let mut raw_buf: Vec<u8> = vec![0; 64];
         let mut len = raw_buf.len() as i32;
@@ -211,7 +212,7 @@ impl LlamaModel {
             }
         }
         raw_buf.truncate(n as usize);
-        Ok(String::from_utf8(raw_buf)?)
+        Ok(String::from_utf8_lossy(&raw_buf).into_owned())
     }
 
     /// Construct a new context from this model.
