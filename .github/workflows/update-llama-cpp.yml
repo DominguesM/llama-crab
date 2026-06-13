@@ -25,33 +25,34 @@ jobs:
       - name: Update submodule
         run: |
           cd llama-crab-sys/llama.cpp
-          git fetch --tags
+          git fetch --tags origin
           LATEST=$(git tag --sort=-version:refname | grep -E '^b[0-9]+$' | head -1)
           echo "Latest llama.cpp release: $LATEST"
-          echo "LATEST=$LATEST" >> $GITHUB_ENV
-          cd ../..
-          git submodule set-branch --branch $LATEST -- llama-crab-sys/llama.cpp
-          git submodule update --init --remote -- llama-crab-sys/llama.cpp
-          cd llama-crab-sys/llama.cpp
-          git checkout $LATEST
+          echo "LATEST=$LATEST" >> "$GITHUB_ENV"
+          git checkout "$LATEST"
           cd ../..
       - name: Check for changes
         id: check
         run: |
           if git diff --quiet -- llama-crab-sys/llama.cpp; then
-            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
-            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git switch -c update-llama-cpp
             git add llama-crab-sys/llama.cpp
             git commit -m "chore(sys): bump llama.cpp to $LATEST"
+            git push --force-with-lease origin update-llama-cpp
           fi
       - name: Open PR
         if: steps.check.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr create \
+          existing=$(gh pr list --head update-llama-cpp --base main --json number --jq 'length')
+          if [ "$existing" -eq 0 ]; then
+            gh pr create \
             --title "chore(sys): bump llama.cpp to ${{ env.LATEST }}" \
             --body "Automated submodule bump." \
             --base main \
             --head update-llama-cpp
+          fi

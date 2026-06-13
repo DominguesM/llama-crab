@@ -151,11 +151,11 @@ hf auth login   # optional, only needed for gated repos
 
 ## What the integration tests use
 
-`../tests/` contains the same examples in test form:
+`../llama-crab/tests/` contains the same examples in test form:
 
-* `tests/gemma4_text.rs`        — text-only generation, no vision.
-* `tests/gemma4_vision.rs`      — Gemma 4 + mmproj + test image.
-* `tests/lfm_vl_vision.rs`      — LFM2.5-VL + mmproj + test image.
+* `llama-crab/tests/gemma4_text.rs`        — text-only generation, no vision.
+* `llama-crab/tests/gemma4_vision.rs`      — Gemma 4 + mmproj + test image.
+* `llama-crab/tests/lfm_vl_vision.rs`      — LFM2.5-VL + mmproj + test image.
 
 They skip cleanly when the model is not present, so a fresh clone can
 build the test binary without owning the model.

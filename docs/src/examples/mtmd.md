@@ -68,7 +68,7 @@ println!("{out}");
 ## Full source
 
 [`examples/mtmd/src/main.rs`][src]. The same flow is exercised by
-the integration tests in `tests/gemma4_vision.rs` and
-`tests/lfm_vl_vision.rs`.
+the integration tests in `llama-crab/tests/gemma4_vision.rs` and
+`llama-crab/tests/lfm_vl_vision.rs`.
 
 [src]: https://github.com/DominguesM/llama-crab/tree/main/examples/mtmd/src/main.rs

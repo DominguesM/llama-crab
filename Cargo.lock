@@ -341,7 +341,7 @@ checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
 name = "chat"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "llama-crab",
@@ -608,7 +608,7 @@ checksum = "91622ff5e7162018101f2fea40d6ebf4a78bbe5a49736a2020649edf9693679e"
 
 [[package]]
 name = "embedding_search"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "llama-crab",
@@ -618,7 +618,7 @@ dependencies = [
 
 [[package]]
 name = "embeddings"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "llama-crab",
@@ -1479,7 +1479,7 @@ checksum = "803ec87c9cfb29b9d2633f20cba1f488db3fd53f2158b1024cbefb47ba05d413"
 
 [[package]]
 name = "lfm_vl_vision"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "llama-crab",
@@ -1536,7 +1536,7 @@ checksum = "92daf443525c4cce67b150400bc2316076100ce0b3686209eb8cf3c31612e6f0"
 
 [[package]]
 name = "llama-crab"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "base64 0.22.1",
  "bitflags 2.13.0",
@@ -1564,7 +1564,7 @@ dependencies = [
 
 [[package]]
 name = "llama-crab-sys"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "bindgen",
  "cc",
@@ -1722,7 +1722,7 @@ dependencies = [
 
 [[package]]
 name = "mtmd"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "llama-crab",
@@ -2132,7 +2132,7 @@ dependencies = [
 
 [[package]]
 name = "quickstart"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "llama-crab",
@@ -2449,7 +2449,7 @@ dependencies = [
 
 [[package]]
 name = "reranker"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "llama-crab",
@@ -2733,7 +2733,7 @@ dependencies = [
 
 [[package]]
 name = "simple"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "llama-crab",
@@ -2792,7 +2792,7 @@ dependencies = [
 
 [[package]]
 name = "speculative"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "llama-crab",
@@ -2820,7 +2820,7 @@ checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 
 [[package]]
 name = "stateful_chat"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "llama-crab",
@@ -2837,7 +2837,7 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
 name = "structured"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "llama-crab",
@@ -3167,7 +3167,7 @@ dependencies = [
 
 [[package]]
 name = "tools"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "llama-crab",
@@ -3403,7 +3403,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vision"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "llama-crab",

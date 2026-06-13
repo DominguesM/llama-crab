@@ -19,7 +19,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.2"
 edition = "2021"
 rust-version = "1.88"
 license = "MIT"
@@ -28,7 +28,7 @@ homepage = "https://github.com/DominguesM/llama-crab"
 authors = ["llama-crab contributors"]
 readme = "README.md"
 keywords = ["llama", "llm", "inference", "gguf", "ai"]
-categories = ["api-bindings", "science", "api-bindings::c"]
+categories = ["api-bindings", "science"]
 description = "Safe, ergonomic and complete Rust bindings for llama.cpp"
 
 [workspace.lints.rust]

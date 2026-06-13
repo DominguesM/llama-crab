@@ -1,117 +1,285 @@
 # llama-crab
 
-> **Safe, ergonomic and complete Rust bindings for [llama.cpp](https://github.com/ggml-org/llama.cpp).**
->
-> Inspired by [`llama-cpp-rs`](https://github.com/utilityai/llama-cpp-rs) and the feature completeness of [`llama-cpp-python`](https://github.com/abetlen/llama-cpp-python).
-
+[![Crates.io](https://img.shields.io/crates/v/llama-crab.svg)](https://crates.io/crates/llama-crab)
+[![Crates.io Downloads](https://img.shields.io/crates/d/llama-crab.svg)](https://crates.io/crates/llama-crab)
+[![Documentation](https://docs.rs/llama-crab/badge.svg)](https://docs.rs/llama-crab)
+[![CI](https://github.com/DominguesM/llama-crab/actions/workflows/ci.yml/badge.svg)](https://github.com/DominguesM/llama-crab/actions/workflows/ci.yml)
+[![Coverage](https://github.com/DominguesM/llama-crab/actions/workflows/coverage.yml/badge.svg)](https://github.com/DominguesM/llama-crab/actions/workflows/coverage.yml)
+[![Release](https://github.com/DominguesM/llama-crab/actions/workflows/release.yml/badge.svg)](https://github.com/DominguesM/llama-crab/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE-MIT)
-[![MSRV: 1.88](https://img.shields.io/badge/MSRV-1.88-blue.svg)](https://blog.rust-lang.org/2025/06/26/Rust-1.88.0.html)
+[![MSRV: 1.88](https://img.shields.io/badge/MSRV-1.88-blue.svg)](rust-toolchain.toml)
+[![Hugging Face](https://img.shields.io/badge/Hugging%20Face-dominguesm-ffcc4d?logo=https%3A%2F%2Fhuggingface.co%2Fdatasets%2Fhuggingface%2Fbrand-assets%2Fresolve%2Fmain%2Fhf-logo.svg&logoColor=black)](https://huggingface.co/dominguesm)
 
-`llama-crab` provides two crates:
+<p align="center">
+  <img
+    src="https://gist.githubusercontent.com/DominguesM/127b9e5614e0e2da6b896fb3da3c8f2d/raw/d5dec07e795979f0a1b43d246a730f4031452113/canarim-crab.png"
+    alt="llama-crab logo"
+    width="220"
+  />
+</p>
 
-| Crate | Purpose |
-|---|---|
-| `llama-crab-sys` | Low-level, hand-curated FFI over `llama.h`, `ggml.h`, `gguf.h` (and `mtmd.h`) generated via `bindgen` and `cmake`. |
-| `llama-crab` | Safe, idiomatic Rust API: `LlamaModel`, `LlamaContext`, sampling chains, chat templates, tool calling, multimodal, speculative decoding, caching, embeddings, reranking. |
+Safe, ergonomic Rust bindings for [`llama.cpp`](https://github.com/ggml-org/llama.cpp).
 
-## Quickstart
+`llama-crab` provides:
 
-Add to your `Cargo.toml`:
+- Low-level FFI bindings to `llama.cpp`, `ggml`, `gguf` and `mtmd` through `llama-crab-sys`.
+- A safe high-level Rust API for model loading, text completion, chat completion and infill.
+- Sampling chains, grammar-constrained decoding and JSON-Schema to GBNF conversion.
+- Chat templates, tool-call parsing and OpenAI-compatible data structures.
+- Embeddings, reranking, prompt cache, session state and speculative decoding.
+- Multimodal support through `mtmd` for vision and audio capable GGUF models.
+- Hardware backends for CPU, Metal, CUDA, Vulkan and ROCm through Cargo features.
+
+Documentation is available at [docs.rs/llama-crab](https://docs.rs/llama-crab) and in the [mdBook user guide](docs/src/SUMMARY.md).
+
+## Installation
+
+Add the crate to your `Cargo.toml`:
 
 ```toml
 [dependencies]
 llama-crab = "0.1"
 ```
 
-Load a GGUF model and generate text:
+By default, `llama-crab` enables CPU OpenMP support and Apple Metal on `aarch64` macOS. To choose backends explicitly, disable default features and enable the ones you need:
+
+```toml
+[dependencies]
+llama-crab = { version = "0.1", default-features = false, features = ["cuda", "openmp"] }
+```
+
+The crate builds the bundled `llama.cpp` sources through CMake. You need:
+
+- Rust 1.88 or newer.
+- CMake 3.18 or newer.
+- A C and C++ compiler supported by `llama.cpp`.
+- A platform SDK when using GPU backends such as Metal, CUDA, Vulkan or ROCm.
+
+## Cargo Features
+
+| Feature | Description |
+| --- | --- |
+| `openmp` | CPU backend with OpenMP. Enabled by default. |
+| `metal` | Apple Metal backend. Enabled by default on `aarch64` macOS. |
+| `cuda` | NVIDIA CUDA backend. |
+| `cuda-no-vmm` | CUDA backend without virtual memory management. |
+| `vulkan` | Vulkan backend. |
+| `rocm` | AMD ROCm/HIP backend. |
+| `mtmd` | Multimodal support through `mtmd.h`; enables image/audio helpers. |
+| `common` | Builds llama.cpp common utilities used by chat and grammar helpers. |
+| `llguidance` | Enables the llguidance sampler integration. |
+| `hf-tokenizer` | Enables Hugging Face tokenizer support. |
+| `disk-cache` | Enables the persistent `sled`-backed prompt cache. |
+| `dynamic-link` | Links llama.cpp as a shared object. |
+| `dynamic-backends` | Loads GGML backends dynamically. |
+| `system-ggml` | Uses a system GGML installation instead of the bundled copy. |
+
+## Basic Usage
+
+Load a GGUF model and generate a text completion:
 
 ```rust,no_run
 use llama_crab::{Llama, LlamaParams};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut llama = Llama::load(LlamaParams::new("models/llama-3.1-8b-instruct-q4_k_m.gguf")
-        .with_n_ctx(2048)
-        .with_n_gpu_layers(99))?;
+    let mut llama = Llama::load(
+        LlamaParams::new("models/model.gguf")
+            .with_n_ctx(2048)
+            .with_n_gpu_layers(99),
+    )?;
 
-    let response = llama.create_completion("Once upon a time", 64)?;
+    let response = llama.create_completion("The capital of France is", 32)?;
     println!("{}", response.text);
+
     Ok(())
 }
 ```
 
-## Documentation
+## Chat Completion
 
-The full user guide lives in [`docs/`](docs/) as an [mdBook]. Run it
-locally with:
+Chat completion accepts a list of role-based messages. Built-in templates can be selected explicitly when you need deterministic formatting.
 
-```bash
-mdbook serve docs/    # http://localhost:3000
+```rust,no_run
+use llama_crab::chat::BuiltinTemplate;
+use llama_crab::high_level::chat_completion::{create_chat_completion_with, ChatMessage};
+use llama_crab::{Llama, LlamaParams, Role};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut llama = Llama::load(LlamaParams::new("models/instruct.gguf").with_n_ctx(4096))?;
+
+    let messages = vec![
+        ChatMessage::new(Role::System, "You are a concise assistant."),
+        ChatMessage::new(Role::User, "Explain Rust ownership in one paragraph."),
+    ];
+
+    let response = create_chat_completion_with(
+        &mut llama,
+        &messages,
+        BuiltinTemplate::ChatMl,
+        &[],
+        128,
+    )?;
+
+    println!("{}", response.content);
+    Ok(())
+}
 ```
 
-Or browse the API docs at <https://docs.rs/llama-crab>.
+## JSON Schema and Grammar-Constrained Decoding
 
-[mdBook]: https://rust-lang.github.io/mdBook/
+`llama-crab` can convert JSON Schema into GBNF grammar and use grammar samplers to constrain model output.
+
+```rust,no_run
+use llama_crab::high_level::completion::json_schema_grammar;
+use serde_json::json;
+
+let schema = json!({
+    "type": "object",
+    "properties": {
+        "name": { "type": "string" },
+        "age": { "type": "integer" }
+    },
+    "required": ["name", "age"]
+});
+
+let grammar = json_schema_grammar(&schema)?;
+# let _ = grammar;
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+See the [`structured`](docs/src/examples/structured.md) example for a complete program.
+
+## Tool Calling
+
+The chat module includes incremental tool-call parsing for common model formats, including ChatML, Mistral, Llama 3, Functionary and plain JSON object output.
+
+```rust,no_run
+use llama_crab::chat::tool_call::{ToolFormat, ToolParser};
+
+let mut parser = ToolParser::new(ToolFormat::ChatMl);
+let calls = parser.feed("<tool_call>{\"name\":\"get_weather\",\"arguments\":{\"city\":\"Tokyo\"}}</tool_call>");
+# let _ = calls;
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+See [Chat & tool calling](docs/src/chat.md) for supported formats and parser behavior.
+
+## Embeddings and Reranking
+
+Enable embeddings when loading the model, then call `Llama::embed` to get an optionally L2-normalized vector.
+
+```rust,no_run
+use llama_crab::{Llama, LlamaParams};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut llama = Llama::load(
+        LlamaParams::new("models/bge-small.gguf")
+            .with_n_ctx(512)
+            .with_embeddings(true),
+    )?;
+
+    let embedding = llama.embed("Rust is a systems programming language.", true)?;
+    println!("dim = {}", embedding.len());
+
+    Ok(())
+}
+```
+
+See [Embeddings & reranking](docs/src/embeddings.md), [`embeddings`](docs/src/examples/embeddings.md) and [`embedding_search`](docs/src/examples/embedding_search.md).
+
+## Multimodal Models
+
+The `mtmd` feature exposes llama.cpp's multimodal pipeline for GGUF models that use a paired projector.
+
+```toml
+[dependencies]
+llama-crab = { version = "0.1", features = ["mtmd"] }
+```
+
+Supported workflows include:
+
+- Loading a text model and an `mmproj` projector.
+- Decoding local images into `MtmdBitmap`.
+- Tokenizing text and media together with `MtmdContext`.
+- Evaluating multimodal chunks and continuing generation with normal samplers.
+
+See [Multimodal](docs/src/multimodal.md), [`vision`](docs/src/examples/vision.md), [`mtmd`](docs/src/examples/mtmd.md), and the integration tests under [`llama-crab/tests`](llama-crab/tests).
+
+## Speculative Decoding
+
+Prompt-lookup speculative decoding is available through the `speculative` module. It can draft candidate tokens from repeated n-grams in the prompt and verify them with the main model.
+
+See [Speculative decoding](docs/src/speculative.md) and the [`speculative`](docs/src/examples/speculative.md) example.
 
 ## Examples
 
-The repo ships with 12 runnable examples in [`examples/`](examples/README.md):
+The repository contains runnable example crates under [`examples/`](examples/README.md). The helper script downloads known-good GGUF fixtures on first run.
 
 ```bash
-./examples/run.sh quickstart          # ~400 MB — text only, smallest demo
-./examples/run.sh chat                # same model — interactive REPL
-./examples/run.sh embeddings          # ~30 MB  — BGE-small + cosine ranking
-./examples/run.sh vision gemma4       # ~5 GB   — vision + text chat
-./examples/run.sh vision lfm-vl       # ~1 GB   — smaller vision model
-./examples/run.sh tools               # function calling
-./examples/run.sh structured          # JSON-schema constrained decoding
+./examples/run.sh quickstart
+./examples/run.sh chat
+./examples/run.sh stateful_chat
+./examples/run.sh embeddings
+./examples/run.sh embedding_search
+./examples/run.sh reranker
+./examples/run.sh vision gemma4
+./examples/run.sh vision lfm-vl
+./examples/run.sh mtmd gemma4
+./examples/run.sh tools
+./examples/run.sh structured
+./examples/run.sh speculative
 ```
 
-`./examples/run.sh` downloads the right GGUF(s) on first run and is
-idempotent afterwards. See [`examples/README.md`](examples/README.md)
-for the full table, manual commands, and how to plug in your own
-GGUF.
+Each example is a standalone Cargo crate and can be copied into another project.
 
-## Feature matrix
+## Documentation
 
-| Feature | Status |
-|---|---|
-| GGUF model loading (mmap, mlock) | ✅ |
-| Multi-GPU layer offload (Metal, CUDA, Vulkan, HIP) | ✅ |
-| KV cache quantization (Q2_K … Q8_K, IQ\*) | ✅ |
-| RoPE scaling (linear, yarn, longrope) | ✅ |
-| Flash attention, SWA, MTP | ✅ |
-| All sampling strategies (greedy, top-k/p, min-p, typical, xtc, mirostat v1/v2, dry, **adaptive_p**, infill, logit-bias, grammar, …) | ✅ |
-| Custom samplers (Rust C-ABI vtable) | ✅ |
-| GBNF grammar + JSON schema constrained decoding | ✅ |
-| Chat templates (Jinja2 subset + 20+ builtins) | ✅ |
-| Tool calling (functionary v1/v2, chatml, hermes, qwen, llama-3) | ✅ |
-| Streaming JSON parsers (incremental tool-call deltas) | ✅ |
-| Embeddings (mean/cls/last pooling + L2 normalize) | ✅ |
-| Reranking (rank pooling) | ✅ |
-| FIM infill (PSM/SPM) | ✅ |
-| Speculative decoding (prompt-lookup n-gram + custom draft models) | ✅ |
-| State save/load (full + per-sequence, with flags) | ✅ |
-| Prompt + KV cache (RAM/Disk, prefix-match) | ✅ |
-| Multimodal (mtmd): vision + audio chat handlers | ✅ (feature `mtmd`) |
-| HF AutoTokenizer (feature `hf-tokenizer`) | ✅ |
-| llguidance (feature `llguidance`) | ✅ |
-| OpenAI-compatible HTTP server | ⛔ out of v0.1 (planned as `llama-crab-server`) |
+- [API documentation](https://docs.rs/llama-crab)
+- [User guide](docs/src/SUMMARY.md)
+- [Examples guide](docs/src/examples/index.md)
+- [Troubleshooting](docs/src/troubleshooting.md)
 
-## Backends
+To serve the guide locally:
 
-| Backend | Feature | Default? |
-|---|---|---|
-| CPU (OpenMP) | `openmp` | ✅ |
-| Apple Metal (macOS/iOS) | `metal` | ✅ on macOS aarch64 |
-| NVIDIA CUDA | `cuda` | – |
-| NVIDIA CUDA (no VMM) | `cuda-no-vmm` | – |
-| Vulkan | `vulkan` | – |
-| AMD ROCm/HIP | `rocm` | – |
-| Dynamic linking | `dynamic-link` | – |
-| System GGML | `system-ggml` | – |
-| Dynamic backends | `dynamic-backends` | – |
+```bash
+mdbook serve docs
+```
+
+## Crates
+
+| Crate | Description |
+| --- | --- |
+| [`llama-crab`](https://crates.io/crates/llama-crab) | Safe high-level API and Rust abstractions. |
+| [`llama-crab-sys`](https://crates.io/crates/llama-crab-sys) | Low-level FFI package that builds and links llama.cpp. |
+
+Most applications should depend on `llama-crab`. Use `llama-crab-sys` only when you need direct access to raw llama.cpp symbols.
+
+## Development
+
+Clone with submodules:
+
+```bash
+git clone --recursive https://github.com/DominguesM/llama-crab.git
+cd llama-crab
+```
+
+Common checks:
+
+```bash
+cargo fmt --all -- --check
+cargo test --workspace
+cargo clippy -p llama-crab --all-features --all-targets
+cargo doc -p llama-crab --no-deps --all-features
+```
+
+The minimum supported Rust version is 1.88 and is pinned in [`rust-toolchain.toml`](rust-toolchain.toml).
 
 ## License
 
-Licensed under the MIT License ([LICENSE-MIT](LICENSE-MIT) or
-<https://opensource.org/licenses/MIT>).
+Licensed under the MIT License. See [LICENSE-MIT](LICENSE-MIT).
+
+## Acknowledgements
+
+`llama-crab` builds on [`llama.cpp`](https://github.com/ggml-org/llama.cpp).
+
+Inspired by [`llama-cpp-rs`](https://github.com/utilityai/llama-cpp-rs) and the feature completeness of [`llama-cpp-python`](https://github.com/abetlen/llama-cpp-python).

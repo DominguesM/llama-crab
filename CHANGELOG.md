@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-06-13
+
 ### Added
 
 - Expanded mdBook user guide coverage with new chapters for backends,
@@ -36,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   target tag in the title.
 - README and contributor docs now point users to the mdBook guide and
   document the Rust 1.88 MSRV.
+- Crate metadata now uses supported crates.io categories and both
+  published crates include README content in their package metadata.
 - Project license changed from dual `MIT OR Apache-2.0` to MIT-only.
 - Example documentation now describes the downloadable GGUF model set
   and the new one-command workflow.
@@ -66,6 +70,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tool-call documentation now escapes literal pipe tokens in markdown
   tables so mdBook does not split model control tokens into extra
   columns.
+- Integration tests for `llama-crab` now live inside the crate package,
+  so `cargo package` no longer ignores tests declared outside the
+  published crate root.
 - Text completion, FIM and multimodal sampling now clear sequence 0
   before each high-level call and sample from the current batch logits
   after the initial decode.
@@ -162,6 +169,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 9 example crates and 3 integration tests covering Gemma 4 and
   LFM2.5-VL.
 
-[Unreleased]: https://github.com/DominguesM/llama-crab/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/DominguesM/llama-crab/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/DominguesM/llama-crab/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/DominguesM/llama-crab/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/DominguesM/llama-crab/releases/tag/v0.1.0

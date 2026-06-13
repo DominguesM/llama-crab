@@ -8,10 +8,11 @@ repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
 description = "Safe, ergonomic and complete Rust bindings for llama.cpp"
+readme.workspace = true
 keywords.workspace = true
 categories.workspace = true
-# Disable Cargo's default file auto-discovery in `../tests/` and
-# declare each integration test explicitly below.
+# Declare each integration test explicitly so feature-gated tests keep
+# their required feature metadata.
 autotests = false
 autobins = false
 
@@ -20,23 +21,23 @@ path = "src/lib.rs"
 
 [[test]]
 name = "gemma4_text"
-path = "../tests/gemma4_text.rs"
+path = "tests/gemma4_text.rs"
 
 [[test]]
 name = "gemma4_vision"
-path = "../tests/gemma4_vision.rs"
+path = "tests/gemma4_vision.rs"
 required-features = ["mtmd"]
 
 [[test]]
 name = "lfm_vl_vision"
-path = "../tests/lfm_vl_vision.rs"
+path = "tests/lfm_vl_vision.rs"
 required-features = ["mtmd"]
 
 [lints]
 workspace = true
 
 [dependencies]
-llama-crab-sys = { path = "../llama-crab-sys", version = "0.1.0" }
+llama-crab-sys = { path = "../llama-crab-sys", version = "0.1.2" }
 thiserror = "1"
 tracing = "0.1"
 tracing-core = "0.1"
@@ -80,5 +81,6 @@ hf-tokenizer = ["dep:tokenizers"]
 disk-cache = ["dep:sled"]
 
 [package.metadata.docs.rs]
-features = ["mtmd", "hf-tokenizer"]
+no-default-features = true
+features = ["openmp", "mtmd"]
 rustdoc-args = ["--cfg", "docsrs"]
