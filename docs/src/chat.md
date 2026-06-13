@@ -67,13 +67,13 @@ assert_eq!(calls.len(), 1);
 
 Supported formats:
 
-| Format        | Trigger syntax                 |
-| ------------- | ------------------------------ | ---------- | ---------- | ------- | ----- | ---- | --- |
-| `ChatMl`      | `<tool_call>{...}</tool_call>` |
-| `Mistral`     | `[TOOL_CALLS][{...}]`          |
-| `Llama3`      | `<                             | python_tag | >{...}`    |
-| `Plain`       | `{...}` (any JSON object)      |
-| `Functionary` | `<                             | start      | >function< | message | >...< | call | >`  |
+| Format        | Trigger syntax                      |
+| ------------- | ----------------------------------- |
+| `ChatMl`      | `<tool_call>{...}</tool_call>`      |
+| `Mistral`     | `[TOOL_CALLS][{...}]`               |
+| `Llama3`      | `<python_tag>{...}`                 |
+| `Plain`       | `{...}` (any JSON object)           |
+| `Functionary` | `<start>function<message>...<call>` |
 
 The parser is **stateful**: feed it token-by-token as the model
 generates, and it will emit completed calls as they appear.
