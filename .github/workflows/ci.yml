@@ -96,7 +96,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && contains(matrix.features, 'vulkan')
         run: |
           sudo apt-get update
-          sudo apt-get install -y glslc libvulkan-dev mesa-vulkan-drivers vulkan-tools
+          sudo apt-get install -y glslang-tools glslc libvulkan-dev mesa-vulkan-drivers spirv-headers spirv-tools vulkan-tools
       - name: Build workspace
         shell: bash
         run: |
