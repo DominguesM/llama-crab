@@ -30,6 +30,7 @@ afterwards. Without arguments it lists every example.
 | ------------------ | ------------------------------------ | ------- | ------------------------------------------ |
 | [`quickstart`]     | `Qwen2.5-0.5B-Instruct-GGUF`         | ~400 MB | Load → tokenize → complete → chat → FIM     |
 | [`simple`]         | any text GGUF                        | varies  | Plain text completion                        |
+| [`streaming`]      | same as `quickstart`                 | ~400 MB | High-level token-by-token output             |
 | [`chat`]           | instruct GGUF                        | varies  | One-shot chat with a builtin template        |
 | [`stateful_chat`]  | same as `quickstart`                 | ~400 MB | REPL with growing history, `/clear`, `/save` |
 | [`embeddings`]     | `bge-small-en-v1.5-gguf`             | ~30 MB  | Embedding extraction + L2 norm               |
@@ -60,6 +61,7 @@ page — each links to the full `main.rs`.
 [`examples/`]: https://github.com/DominguesM/llama-crab/tree/main/examples
 [`quickstart`]: ./quickstart.md
 [`simple`]: ./simple.md
+[`streaming`]: ./streaming.md
 [`chat`]: ./chat.md
 [`stateful_chat`]: ./stateful_chat.md
 [`embeddings`]: ./embeddings.md

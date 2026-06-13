@@ -2,9 +2,12 @@
 
 A stateful chat keeps the conversation history alive across turns so
 the model sees the full context every time. At the API level this is
-just a growing `Vec<ChatMessage>` that you re-send on each turn —
-`llama-crab` reuses the prompt prefix cache to avoid recomputing
-previous turns from scratch.
+just a growing `Vec<ChatMessage>` that you re-send on each turn.
+
+In v0.1.x, the high-level completion helpers do not automatically
+restore prompt-cache entries. `create_completion` clears KV sequence 0
+before each call, and `create_chat_completion_with` uses that path.
+Use the lower-level context/session APIs if you need manual KV reuse.
 
 ## Minimal loop
 
@@ -66,9 +69,9 @@ can hold. When the history grows past it, you have three options:
 ## Session persistence
 
 To resume a conversation after the process exits, serialize the
-history with `serde_json` and reload it on the next start. KV cache
-entries ([Caching & session state](./caching.md)) make the resume
-nearly free if the prompt is byte-identical.
+history with `serde_json` and reload it on the next start. If you also
+need KV reuse, persist and restore session state manually through the
+lower-level APIs described in [Caching & session state](./caching.md).
 
 ```rust,no_run
 # use llama_crab::chat::ChatMessage;

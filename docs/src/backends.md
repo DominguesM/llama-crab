@@ -112,7 +112,7 @@ modern architectures (Gemma, Llama 3, Qwen2.5, …).
 ## Where to next?
 
 - [Sampling guide](./sampling.md) — what to do with the logits.
-- [Caching & session state](./caching.md) — reuse KV state across calls.
+- [Caching & session state](./caching.md) — manually persist and restore KV state.
 - [Reference](./reference.md) — full feature matrix.
 
 [`LlamaBackend`]: https://docs.rs/llama-crab/latest/llama_crab/struct.LlamaBackend.html

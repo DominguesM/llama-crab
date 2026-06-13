@@ -27,7 +27,7 @@ Safe, ergonomic Rust bindings for [`llama.cpp`](https://github.com/ggml-org/llam
 - A safe high-level Rust API for model loading, text completion, chat completion and infill.
 - Sampling chains, grammar-constrained decoding and JSON-Schema to GBNF conversion.
 - Chat templates, tool-call parsing and OpenAI-compatible data structures.
-- Embeddings, reranking, prompt cache, session state and speculative decoding.
+- Embeddings, reranking, manual prompt/session cache APIs and speculative decoding.
 - Multimodal support through `mtmd` for vision and audio capable GGUF models.
 - Hardware backends for CPU, Metal, CUDA, Vulkan and ROCm through Cargo features.
 
@@ -58,22 +58,22 @@ The crate builds the bundled `llama.cpp` sources through CMake. You need:
 
 ## Cargo Features
 
-| Feature | Description |
-| --- | --- |
-| `openmp` | CPU backend with OpenMP. Enabled by default. |
-| `metal` | Apple Metal backend. Enabled by default on `aarch64` macOS. |
-| `cuda` | NVIDIA CUDA backend. |
-| `cuda-no-vmm` | CUDA backend without virtual memory management. |
-| `vulkan` | Vulkan backend. |
-| `rocm` | AMD ROCm/HIP backend. |
-| `mtmd` | Multimodal support through `mtmd.h`; enables image/audio helpers. |
-| `common` | Builds llama.cpp common utilities used by chat and grammar helpers. |
-| `llguidance` | Enables the llguidance sampler integration. |
-| `hf-tokenizer` | Enables Hugging Face tokenizer support. |
-| `disk-cache` | Enables the persistent `sled`-backed prompt cache. |
-| `dynamic-link` | Links llama.cpp as a shared object. |
-| `dynamic-backends` | Loads GGML backends dynamically. |
-| `system-ggml` | Uses a system GGML installation instead of the bundled copy. |
+| Feature            | Description                                                         |
+| ------------------ | ------------------------------------------------------------------- |
+| `openmp`           | CPU backend with OpenMP. Enabled by default.                        |
+| `metal`            | Apple Metal backend. Enabled by default on `aarch64` macOS.         |
+| `cuda`             | NVIDIA CUDA backend.                                                |
+| `cuda-no-vmm`      | CUDA backend without virtual memory management.                     |
+| `vulkan`           | Vulkan backend.                                                     |
+| `rocm`             | AMD ROCm/HIP backend.                                               |
+| `mtmd`             | Multimodal support through `mtmd.h`; enables image/audio helpers.   |
+| `common`           | Builds llama.cpp common utilities used by chat and grammar helpers. |
+| `llguidance`       | Enables the llguidance sampler integration.                         |
+| `hf-tokenizer`     | Enables Hugging Face tokenizer support.                             |
+| `disk-cache`       | Enables the persistent `sled`-backed prompt cache.                  |
+| `dynamic-link`     | Links llama.cpp as a shared object.                                 |
+| `dynamic-backends` | Loads GGML backends dynamically.                                    |
+| `system-ggml`      | Uses a system GGML installation instead of the bundled copy.        |
 
 ## Basic Usage
 
@@ -212,6 +212,15 @@ Prompt-lookup speculative decoding is available through the `speculative` module
 
 See [Speculative decoding](docs/src/speculative.md) and the [`speculative`](docs/src/examples/speculative.md) example.
 
+## Streaming
+
+`create_completion_stream` calls a synchronous callback as text becomes
+available, while returning the same final `Completion` shape as
+`create_completion`. Both high-level helpers clear sequence 0 before
+each call; use lower-level context/session APIs if you need manual KV
+reuse. The [`streaming`](docs/src/examples/streaming.md) example shows
+the callback loop.
+
 ## Examples
 
 The repository contains runnable example crates under [`examples/`](examples/README.md). The helper script downloads known-good GGUF fixtures on first run.
@@ -229,6 +238,7 @@ The repository contains runnable example crates under [`examples/`](examples/REA
 ./examples/run.sh tools
 ./examples/run.sh structured
 ./examples/run.sh speculative
+./examples/run.sh streaming
 ```
 
 Each example is a standalone Cargo crate and can be copied into another project.
@@ -248,9 +258,9 @@ mdbook serve docs
 
 ## Crates
 
-| Crate | Description |
-| --- | --- |
-| [`llama-crab`](https://crates.io/crates/llama-crab) | Safe high-level API and Rust abstractions. |
+| Crate                                                       | Description                                            |
+| ----------------------------------------------------------- | ------------------------------------------------------ |
+| [`llama-crab`](https://crates.io/crates/llama-crab)         | Safe high-level API and Rust abstractions.             |
 | [`llama-crab-sys`](https://crates.io/crates/llama-crab-sys) | Low-level FFI package that builds and links llama.cpp. |
 
 Most applications should depend on `llama-crab`. Use `llama-crab-sys` only when you need direct access to raw llama.cpp symbols.

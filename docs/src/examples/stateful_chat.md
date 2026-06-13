@@ -46,9 +46,10 @@ history.push(ChatMessage::new(Role::Assistant, resp.content));
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-The history is the entire context — each call re-sends everything
-and the prompt-cache (see [Caching](../caching.md)) skips the parts
-that haven't changed.
+The history is the entire context. Each high-level call re-sends and
+re-evaluates the rendered history. Prompt-cache/session APIs are
+manual tools for lower-level loops; they are not used automatically by
+`create_chat_completion_with`.
 
 ## Expected output
 

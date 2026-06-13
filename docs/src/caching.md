@@ -9,6 +9,12 @@
 
 ## Prompt cache
 
+Prompt-cache storage is manual in v0.1.x. The cache types store and
+look up opaque session bytes for token prefixes, but high-level helpers
+do not consult them automatically. In particular, `create_completion`
+clears KV sequence 0 before each call so the call starts at position 0
+and remains independent from previous calls.
+
 Both implementations live in the [`cache`] module and follow the
 [`Cache`] trait. They key on the **exact token sequence** and return
 the longest matching prefix.
@@ -51,14 +57,16 @@ process; only the last writer wins on key collisions.
 
 ### When the prompt cache helps
 
-- **Chat REPLs** — each turn prepends the full history; a prefix hit
-  skips re-evaluating every previous turn.
+- **Manual chat loops** — each turn prepends the full history; if you
+  restore cached state yourself, a prefix hit can skip re-evaluating
+  previous turns.
 - **RAG** — embed the same document chunk multiple times.
 - **Templated prompts** — system prompt + few-shot examples are
   repeated across queries.
 
 The cache does **not** help when every call uses a fresh prompt with
-no common prefix.
+no common prefix, or when you stay on the high-level `create_completion`
+path without manually restoring cached state.
 
 ## Session state
 

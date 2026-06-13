@@ -25,6 +25,7 @@
 
 - [Examples overview](./examples/index.md)
 - [`simple`](./examples/simple.md) — plain text completion
+- [`streaming`](./examples/streaming.md) — high-level token streaming
 - [`quickstart`](./examples/quickstart.md) — first end-to-end program
 - [`chat`](./examples/chat.md) — multi-turn chat
 - [`stateful_chat`](./examples/stateful_chat.md) — interactive REPL with history
