@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New one-command examples workflow with `examples/run.sh`, including
+  automatic model resolution for text, embedding and multimodal demos.
+- New runnable examples:
+  - `quickstart` for the smallest end-to-end text demo.
+  - `stateful_chat` for multi-turn chat with history commands.
+  - `embedding_search` for BGE-small semantic ranking.
+  - `lfm_vl_vision` for LFM2.5-VL image question answering.
+- Top-level `Makefile` convenience targets for building, checking,
+  downloading models, running examples and cleaning local artifacts.
+- Script smoke test coverage for the example runner, model downloader
+  and cleanup script.
+
+### Changed
+
+- Project license changed from dual `MIT OR Apache-2.0` to MIT-only.
+- Example documentation now describes the downloadable GGUF model set
+  and the new one-command workflow.
+- Download workflow now prefers the Hugging Face CLI (`hf download`)
+  instead of raw `curl`, with a Python module fallback for environments
+  where the `hf` executable is broken.
+- `make quickstart`, `make stateful-chat`, `make vision-*` and
+  `make embedding-search` now download only the models required by the
+  requested example instead of fetching the full model set.
+- Rust sources and tests were formatted consistently with `cargo fmt`.
+
+### Fixed
+
+- Text completion, FIM and multimodal sampling now clear sequence 0
+  before each high-level call and sample from the current batch logits
+  after the initial decode.
+- `LlamaModel::detokenize` now uses lossy UTF-8 conversion, avoiding
+  errors on token byte sequences that are not valid UTF-8 by themselves.
+- Multimodal prompts can now use `default_media_marker()` to place image
+  tokens reliably before `mtmd_tokenize`.
+- `examples/run.sh` now passes downloaded model, projector and fixture
+  paths to examples that require positional arguments.
+- `scripts/clean.sh` no longer errors when optional cleanup path arrays
+  are empty.
+- Removed the unsupported `unreachable-docs` lint from
+  `llama-crab-sys`, eliminating the Rust 1.88 warning.
+- `.DS_Store` and downloaded model artifacts are ignored.
+
 ## [0.1.1] - 2026-06-11
 
 ### Changed

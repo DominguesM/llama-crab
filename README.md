@@ -5,8 +5,7 @@
 > Inspired by [`llama-cpp-rs`](https://github.com/utilityai/llama-cpp-rs) and the feature completeness of [`llama-cpp-python`](https://github.com/abetlen/llama-cpp-python).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE-MIT)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE-APACHE)
-[![MSRV: 1.80](https://img.shields.io/badge/MSRV-1.80-blue.svg)](https://blog.rust-lang.org/2024/07/25/Rust-1.80.0.html)
+[![MSRV: 1.88](https://img.shields.io/badge/MSRV-1.88-blue.svg)](https://blog.rust-lang.org/2025/06/26/Rust-1.88.0.html)
 
 `llama-crab` provides two crates:
 
@@ -101,9 +100,5 @@ GGUF.
 
 ## License
 
-Dual-licensed under either of:
-
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <https://www.apache.org/licenses/LICENSE-2.0>)
-- MIT License ([LICENSE-MIT](LICENSE-MIT) or <https://opensource.org/licenses/MIT>)
-
-at your option.
+Licensed under the MIT License ([LICENSE-MIT](LICENSE-MIT) or
+<https://opensource.org/licenses/MIT>).
