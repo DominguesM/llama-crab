@@ -67,13 +67,13 @@ assert_eq!(calls.len(), 1);
 
 Supported formats:
 
-| Format        | Trigger syntax                      |
-| ------------- | ----------------------------------- |
-| `ChatMl`      | `<tool_call>{...}</tool_call>`      |
-| `Mistral`     | `[TOOL_CALLS][{...}]`               |
-| `Llama3`      | `<python_tag>{...}`                 |
-| `Plain`       | `{...}` (any JSON object)           |
-| `Functionary` | `<start>function<message>...<call>` |
+| Format        | Trigger syntax                                | Notes                                          |
+| ------------- | --------------------------------------------- | ---------------------------------------------- |
+| `ChatMl`      | `<tool_call>{...}</tool_call>`                | Qwen, Hermes, and other ChatML-based models.   |
+| `Mistral`     | `[TOOL_CALLS][{...}]`                         | Mistral and Mixtral instruct models.           |
+| `Llama3`      | `<\|python_tag\|>{...}`                       | Llama 3.1/3.2 instruct with built-in tools.    |
+| `Plain`       | `{...}` (any JSON object)                     | Fallback for models without a defined format.  |
+| `Functionary` | `<\|start\|>function<\|message\|>...<\|call\|>` | Functionary v2 (multi-turn tool protocol).     |
 
 The parser is **stateful**: feed it token-by-token as the model
 generates, and it will emit completed calls as they appear.

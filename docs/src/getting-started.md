@@ -36,7 +36,8 @@ llama-crab = { version = "0.1", default-features = false, features = ["cuda", "o
 ## First program
 
 ```rust,no_run
-use llama_crab::{Llama, LlamaParams, Role, high_level::chat_completion::ChatMessage};
+use llama_crab::chat::ChatMessage;
+use llama_crab::{Llama, LlamaParams, Role};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Load the model.
