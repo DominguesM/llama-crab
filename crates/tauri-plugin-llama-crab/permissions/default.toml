@@ -1,0 +1,18 @@
+[default]
+description = "Allows local LLM inference through llama-crab."
+permissions = [
+  "allow-load-model",
+  "allow-unload-model",
+  "allow-list-models",
+  "allow-retrieve-model",
+  "allow-create-chat-completion",
+  "allow-stream-chat-completion",
+  "allow-create-completion",
+  "allow-stream-completion",
+  "allow-create-embedding",
+  "allow-create-rerank",
+  "allow-tokenize",
+  "allow-tokenize-count",
+  "allow-detokenize",
+  "allow-cancel",
+]

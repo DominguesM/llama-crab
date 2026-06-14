@@ -1,0 +1,26 @@
+{
+  "name": "llama-crab-monorepo",
+  "private": true,
+  "packageManager": "pnpm@11.0.9",
+  "scripts": {
+    "build": "pnpm -r --if-present build",
+    "docs:build": "pnpm docs:typedoc && pnpm docs:rust && pnpm --dir docs build",
+    "docs:dev": "pnpm --dir docs start",
+    "docs:rust": "cargo doc -p llama-crab -p llama-crab-sys -p llama-crab-server -p tauri-plugin-llama-crab --no-deps && rm -rf docs/static/api/rust && mkdir -p docs/static/api/rust && cp -R target/doc/. docs/static/api/rust/",
+    "docs:typedoc": "pnpm --dir docs exec typedoc --options typedoc.json",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "core-js",
+      "esbuild"
+    ]
+  }
+}

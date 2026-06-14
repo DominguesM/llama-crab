@@ -1,6 +1,6 @@
 # Packages
 
-Reserved workspace for future JavaScript and TypeScript packages.
+JavaScript and TypeScript packages for llama-crab integrations.
 
-- `core/`: future `@llama-crab/core` package.
-- `tauri/`: future `@llama-crab/tauri` package.
+- `core/`: `@llama-crab/core`, shared OpenAI-like TypeScript types and mapping helpers.
+- `tauri/`: `@llama-crab/tauri`, OpenAI-like client for the Tauri IPC runtime.
