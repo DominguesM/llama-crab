@@ -11,7 +11,7 @@ use crate::{
         TokenizeResponse,
     },
     state::PluginState,
-    worker::WorkerHandle,
+    worker::{LoadModelParams, WorkerHandle},
 };
 
 #[tauri::command]
@@ -28,18 +28,28 @@ pub async fn load_model(
             "model `{id}` is already loaded"
         )));
     }
+
     let info = LoadedModelInfo::new(
-        id,
+        id.clone(),
         payload.path.clone(),
         payload.kind,
         payload.mobile_preset.map(|preset| preset.as_str().into()),
         payload.pooling.map(|pooling| pooling.as_str().into()),
         payload.mmproj_path.clone(),
     );
-    let params = payload.llama_params();
-    let worker = tauri::async_runtime::spawn_blocking(move || WorkerHandle::load(params))
-        .await
-        .map_err(|error| PluginError::worker(error.to_string()))??;
+
+    let params = payload.llama_params(state.config());
+
+    let worker = tauri::async_runtime::spawn_blocking(move || {
+        WorkerHandle::load(LoadModelParams { params })
+    })
+    .await
+    .map_err(|error| PluginError::worker_panicked(error.to_string()))??;
+
+    #[cfg(feature = "mtmd")]
+    if let Some(path) = info.mmproj_path.clone() {
+        worker.load_mtmd(path)?;
+    }
 
     let response = info.load_response();
     state.insert_loaded_model(info, worker);
@@ -78,7 +88,7 @@ pub async fn create_chat_completion(
     let worker = state.worker(&payload.model)?;
     tauri::async_runtime::spawn_blocking(move || worker.create_chat_completion(payload))
         .await
-        .map_err(|error| PluginError::worker(error.to_string()))?
+        .map_err(|error| PluginError::worker_panicked(error.to_string()))?
 }
 
 #[tauri::command]
@@ -97,7 +107,7 @@ pub async fn stream_chat_completion(
     .await;
 
     state.remove_request(&request_id);
-    result.map_err(|error| PluginError::worker(error.to_string()))?
+    result.map_err(|error| PluginError::worker_panicked(error.to_string()))?
 }
 
 #[tauri::command]
@@ -108,7 +118,7 @@ pub async fn create_completion(
     let worker = state.worker(&payload.model)?;
     tauri::async_runtime::spawn_blocking(move || worker.create_completion(payload))
         .await
-        .map_err(|error| PluginError::worker(error.to_string()))?
+        .map_err(|error| PluginError::worker_panicked(error.to_string()))?
 }
 
 #[tauri::command]
@@ -127,7 +137,7 @@ pub async fn stream_completion(
     .await;
 
     state.remove_request(&request_id);
-    result.map_err(|error| PluginError::worker(error.to_string()))?
+    result.map_err(|error| PluginError::worker_panicked(error.to_string()))?
 }
 
 #[tauri::command]
@@ -138,7 +148,7 @@ pub async fn create_embedding(
     let worker = state.worker(&payload.model)?;
     tauri::async_runtime::spawn_blocking(move || worker.create_embedding(payload))
         .await
-        .map_err(|error| PluginError::worker(error.to_string()))?
+        .map_err(|error| PluginError::worker_panicked(error.to_string()))?
 }
 
 #[tauri::command]
@@ -149,7 +159,7 @@ pub async fn create_rerank(
     let worker = state.worker(&payload.model)?;
     tauri::async_runtime::spawn_blocking(move || worker.create_rerank(payload))
         .await
-        .map_err(|error| PluginError::worker(error.to_string()))?
+        .map_err(|error| PluginError::worker_panicked(error.to_string()))?
 }
 
 #[tauri::command]
@@ -160,7 +170,7 @@ pub async fn tokenize(
     let worker = state.worker(&payload.model)?;
     tauri::async_runtime::spawn_blocking(move || worker.tokenize(payload))
         .await
-        .map_err(|error| PluginError::worker(error.to_string()))?
+        .map_err(|error| PluginError::worker_panicked(error.to_string()))?
 }
 
 #[tauri::command]
@@ -171,7 +181,7 @@ pub async fn tokenize_count(
     let worker = state.worker(&payload.model)?;
     tauri::async_runtime::spawn_blocking(move || worker.tokenize_count(payload))
         .await
-        .map_err(|error| PluginError::worker(error.to_string()))?
+        .map_err(|error| PluginError::worker_panicked(error.to_string()))?
 }
 
 #[tauri::command]
@@ -182,7 +192,7 @@ pub async fn detokenize(
     let worker = state.worker(&payload.model)?;
     tauri::async_runtime::spawn_blocking(move || worker.detokenize(payload))
         .await
-        .map_err(|error| PluginError::worker(error.to_string()))?
+        .map_err(|error| PluginError::worker_panicked(error.to_string()))?
 }
 
 #[tauri::command]

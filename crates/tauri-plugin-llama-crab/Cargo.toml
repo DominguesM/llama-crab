@@ -24,9 +24,15 @@ tauri.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 uuid.workspace = true
+base64 = { version = "0.22", optional = true }
+image = { version = "0.25", default-features = false, optional = true }
 
 [build-dependencies]
 tauri-plugin = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
 tempfile = "3"
+
+[features]
+default = []
+mtmd = ["llama-crab/mtmd", "dep:base64", "dep:image"]
