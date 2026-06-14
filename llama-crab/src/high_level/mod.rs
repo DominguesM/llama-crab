@@ -19,6 +19,7 @@ pub use self::hf_tokenizer::HfTokenizer;
 pub use self::tokenizer::{FimTokens, LlamaTokenizer, Tokenizer};
 
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use crate::backend::LlamaBackend;
 use crate::context::{LlamaContext, LlamaContextParams};
@@ -185,6 +186,32 @@ pub struct LlamaParams {
     pub context: LlamaContextParams,
 }
 
+/// High-level mobile-oriented parameter presets.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MobilePreset {
+    /// Small batches and CPU-only execution for memory-constrained devices.
+    LowRam,
+    /// Balanced defaults for interactive mobile chat.
+    Balanced,
+    /// Prefer GPU offload and larger batches for capable devices.
+    GpuMax,
+}
+
+impl FromStr for MobilePreset {
+    type Err = String;
+
+    fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
+        match value {
+            "low-ram" | "low_ram" | "lowram" => Ok(Self::LowRam),
+            "balanced" => Ok(Self::Balanced),
+            "gpu-max" | "gpu_max" | "gpumax" => Ok(Self::GpuMax),
+            other => Err(format!(
+                "unknown mobile preset: {other} (expected low-ram, balanced, or gpu-max)"
+            )),
+        }
+    }
+}
+
 impl LlamaParams {
     /// Construct parameters targeting the given model.
     #[must_use]
@@ -224,6 +251,20 @@ impl LlamaParams {
         self
     }
 
+    /// Configure the logical maximum batch size.
+    #[must_use]
+    pub fn with_n_batch(mut self, n: u32) -> Self {
+        self.context = self.context.with_n_batch(n);
+        self
+    }
+
+    /// Configure the physical batch size used by a forward pass.
+    #[must_use]
+    pub fn with_n_ubatch(mut self, n: u32) -> Self {
+        self.context = self.context.with_n_ubatch(n);
+        self
+    }
+
     /// Enable embeddings collection.
     #[must_use]
     pub fn with_embeddings(mut self, yes: bool) -> Self {
@@ -245,11 +286,59 @@ impl LlamaParams {
         self
     }
 
+    /// Enable or disable KQV cache offload to the active GPU backend.
+    #[must_use]
+    pub fn with_offload_kqv(mut self, yes: bool) -> Self {
+        self.context = self.context.with_offload_kqv(yes);
+        self
+    }
+
+    /// Enable or disable flash attention.
+    #[must_use]
+    pub fn with_flash_attn(mut self, yes: bool) -> Self {
+        self.context = self.context.with_flash_attn(yes);
+        self
+    }
+
     /// Configure the pooling type (used by embedding models).
     #[must_use]
     pub fn with_pooling_type(mut self, p: crate::context::params::PoolingType) -> Self {
         self.context = self.context.with_pooling_type(p);
         self
+    }
+
+    /// Apply a mobile-oriented preset. Call explicit setters after this method
+    /// to override individual values.
+    #[must_use]
+    pub fn with_mobile_preset(self, preset: MobilePreset) -> Self {
+        match preset {
+            MobilePreset::LowRam => self
+                .with_n_ctx(2048)
+                .with_n_batch(128)
+                .with_n_ubatch(128)
+                .with_n_threads(4)
+                .with_n_threads_batch(4)
+                .with_n_gpu_layers(0)
+                .with_flash_attn(false)
+                .with_use_mmap(true),
+            MobilePreset::Balanced => self
+                .with_n_ctx(4096)
+                .with_n_batch(512)
+                .with_n_ubatch(256)
+                .with_n_threads(4)
+                .with_n_threads_batch(4)
+                .with_n_gpu_layers(32)
+                .with_flash_attn(true)
+                .with_use_mmap(true),
+            MobilePreset::GpuMax => self
+                .with_n_ctx(4096)
+                .with_n_batch(1024)
+                .with_n_ubatch(512)
+                .with_n_gpu_layers(99)
+                .with_flash_attn(true)
+                .with_offload_kqv(true)
+                .with_use_mmap(true),
+        }
     }
 }
 
@@ -266,3 +355,27 @@ impl Default for LlamaParams {
 // StopReason is re-exported above for downstream users.
 #[doc(inline)]
 pub use StopReason as _StopReasonShim;
+
+#[cfg(test)]
+mod tests {
+    use super::{LlamaParams, MobilePreset};
+
+    #[test]
+    fn mobile_preset_can_be_overridden() {
+        let params = LlamaParams::new("model.gguf")
+            .with_mobile_preset(MobilePreset::Balanced)
+            .with_n_ctx(1024)
+            .with_n_gpu_layers(0);
+
+        assert_eq!(params.context.build().n_ctx, 1024);
+        assert_eq!(params.model.n_gpu_layers(), 0);
+    }
+
+    #[test]
+    fn mobile_preset_parse_accepts_cli_names() {
+        assert_eq!("low-ram".parse(), Ok(MobilePreset::LowRam));
+        assert_eq!("balanced".parse(), Ok(MobilePreset::Balanced));
+        assert_eq!("gpu-max".parse(), Ok(MobilePreset::GpuMax));
+        assert!("fast".parse::<MobilePreset>().is_err());
+    }
+}

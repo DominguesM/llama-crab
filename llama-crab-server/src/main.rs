@@ -16,18 +16,23 @@ use axum::{Json, Router};
 use clap::Parser;
 use futures_util::stream;
 use futures_util::StreamExt;
-use llama_crab::chat::tool_call::{extract_tool_calls, ToolFormat};
+use llama_crab::chat::tool_call::{extract_tool_calls, ToolCallDelta, ToolCallStream, ToolFormat};
 use llama_crab::chat::{
     render_builtin, BuiltinTemplate, ChatMessage, Role, ToolCall, ToolDefinition,
 };
 use llama_crab::high_level::completion::{
     json_schema_grammar, CompletionChunk, CompletionLogprobs, CompletionOptions, SamplingOptions,
-    StreamControl,
+    StopReason, StreamControl,
 };
 use llama_crab::json_schema::json_object_grammar;
 use llama_crab::sampling::LlamaSampler;
 use llama_crab::LlamaLogitBias;
-use llama_crab::{Completion, Llama, LlamaParams, LlamaToken};
+#[cfg(feature = "mtmd")]
+use llama_crab::{
+    batch::LlamaBatch,
+    multimodal::{default_media_marker, MtmdBitmap, MtmdContext, MtmdInputText},
+};
+use llama_crab::{Completion, Llama, LlamaParams, LlamaToken, MobilePreset};
 use serde::de;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
@@ -35,6 +40,11 @@ use tokio::sync::{mpsc as tokio_mpsc, oneshot};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
+
+const DEFAULT_N_CTX: u32 = 2048;
+const DEFAULT_N_BATCH: u32 = 512;
+const DEFAULT_N_THREADS: i32 = 0;
+const DEFAULT_N_GPU_LAYERS: i32 = 0;
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -44,20 +54,43 @@ struct Args {
     host: String,
     #[arg(long, default_value_t = 8080, env = "LLAMA_CRAB_PORT")]
     port: u16,
-    #[arg(long, default_value_t = 2048, env = "LLAMA_CRAB_N_CTX")]
-    n_ctx: u32,
-    #[arg(long, default_value_t = 0, env = "LLAMA_CRAB_N_GPU_LAYERS")]
-    n_gpu_layers: i32,
+    #[arg(long, env = "LLAMA_CRAB_N_CTX")]
+    n_ctx: Option<u32>,
+    #[arg(long, env = "LLAMA_CRAB_N_BATCH")]
+    n_batch: Option<u32>,
+    #[arg(long, env = "LLAMA_CRAB_N_THREADS")]
+    n_threads: Option<i32>,
+    #[arg(long, env = "LLAMA_CRAB_N_GPU_LAYERS")]
+    n_gpu_layers: Option<i32>,
+    #[arg(
+        long,
+        env = "LLAMA_CRAB_MOBILE_PRESET",
+        value_parser = ["low-ram", "balanced", "gpu-max"]
+    )]
+    mobile_preset: Option<String>,
     #[arg(long, default_value = "llama-crab", env = "LLAMA_CRAB_MODEL_NAME")]
     model_name: String,
+    #[arg(long, env = "LLAMA_CRAB_MMPROJ")]
+    mmproj: Option<String>,
     #[arg(long, default_value_t = false, env = "LLAMA_CRAB_EMBEDDINGS")]
     embeddings: bool,
+    #[arg(long, default_value_t = false, env = "LLAMA_CRAB_RERANKING")]
+    reranking: bool,
+    #[arg(long, default_value = "unspecified", env = "LLAMA_CRAB_POOLING")]
+    pooling: String,
 }
 
 #[derive(Clone)]
 struct AppState {
     model_name: String,
     jobs: mpsc::Sender<Job>,
+}
+
+#[derive(Clone, Copy)]
+struct MultimodalRuntime<'a> {
+    mmproj_path: Option<&'a str>,
+    #[cfg(feature = "mtmd")]
+    mtmd: Option<&'a MtmdContext>,
 }
 
 enum Job {
@@ -80,6 +113,10 @@ enum Job {
     Embed {
         request: EmbeddingRequest,
         reply: oneshot::Sender<Result<EmbeddingResponse, String>>,
+    },
+    Rerank {
+        request: RerankRequest,
+        reply: oneshot::Sender<Result<RerankResponse, String>>,
     },
     Tokenize {
         request: TokenizeRequest,
@@ -269,13 +306,38 @@ struct ResponseFormatJsonSchema {
 struct ChatRequestMessage {
     role: String,
     #[serde(default, deserialize_with = "deserialize_chat_content")]
-    content: String,
+    content: ChatContent,
     #[serde(default)]
     tool_call_id: Option<String>,
     #[serde(default)]
     tool_calls: Vec<ChatMessageToolCallRequest>,
     #[serde(default)]
     name: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct ChatContent {
+    parts: Vec<ChatContentPart>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ChatContentPart {
+    Text(String),
+    Media(ChatMediaInput),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ChatMediaInput {
+    kind: ChatMediaKind,
+    url: String,
+    detail: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ChatMediaKind {
+    Image,
+    Audio,
+    Video,
 }
 
 #[derive(Debug, Deserialize)]
@@ -391,6 +453,8 @@ struct EmbeddingRequest {
     user: Option<String>,
     #[serde(default = "default_normalize")]
     normalize: bool,
+    #[serde(default)]
+    encoding_format: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -404,8 +468,17 @@ struct EmbeddingResponse {
 #[derive(Debug, Serialize)]
 struct EmbeddingItem {
     object: &'static str,
-    embedding: Vec<f32>,
+    embedding: EmbeddingValue,
     index: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    encoding_format: Option<&'static str>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(untagged)]
+enum EmbeddingValue {
+    Float(Vec<f32>),
+    Base64(String),
 }
 
 #[derive(Debug, Serialize)]
@@ -419,6 +492,30 @@ struct Usage {
 struct EmbeddingUsage {
     prompt_tokens: u32,
     total_tokens: u32,
+}
+
+#[derive(Debug, Deserialize)]
+struct RerankRequest {
+    #[serde(default)]
+    model: Option<String>,
+    query: String,
+    documents: Vec<String>,
+    #[serde(default)]
+    top_n: Option<usize>,
+}
+
+#[derive(Debug, Serialize)]
+struct RerankResponse {
+    model: String,
+    results: Vec<RerankResult>,
+}
+
+#[derive(Debug, Serialize)]
+struct RerankResult {
+    index: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    document: Option<String>,
+    relevance_score: f32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -511,6 +608,27 @@ struct ChatStreamDelta {
     role: Option<&'static str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     content: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tool_calls: Option<Vec<ChatStreamToolCall>>,
+}
+
+#[derive(Debug, Serialize)]
+struct ChatStreamToolCall {
+    index: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "type")]
+    kind: Option<&'static str>,
+    function: ChatStreamToolCallFunction,
+}
+
+#[derive(Debug, Serialize)]
+struct ChatStreamToolCallFunction {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    arguments: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -541,6 +659,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/v1/completions", post(completions))
         .route("/v1/chat/completions", post(chat_completions))
         .route("/v1/embeddings", post(embeddings))
+        .route("/v1/rerank", post(rerank))
+        .route("/v1/reranking", post(rerank))
+        .route("/rerank", post(rerank))
+        .route("/reranking", post(rerank))
         .route("/extras/tokenize", post(tokenize))
         .route("/extras/tokenize/count", post(tokenize_count))
         .route("/extras/detokenize", post(detokenize))
@@ -552,7 +674,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     eprintln!("  model : {}", args.model_name);
     eprintln!(
         "  routes: /health, /v1/models, /v1/completions, /v1/chat/completions, \
-         /v1/embeddings, /extras/tokenize, /extras/tokenize/count, /extras/detokenize"
+         /v1/embeddings, /v1/rerank, /extras/tokenize, /extras/tokenize/count, \
+         /extras/detokenize"
     );
     eprintln!("  ctrl+c to stop");
     tracing::info!(%addr, model = %args.model_name, "starting llama-crab-server");
@@ -643,6 +766,18 @@ async fn embeddings(
     }
 }
 
+async fn rerank(State(state): State<AppState>, Json(request): Json<RerankRequest>) -> Response {
+    let (tx, rx) = oneshot::channel();
+    if let Err(err) = state.jobs.send(Job::Rerank { request, reply: tx }) {
+        return error_response(StatusCode::INTERNAL_SERVER_ERROR, err.to_string());
+    }
+    match rx.await {
+        Ok(Ok(response)) => Json(response).into_response(),
+        Ok(Err(err)) => error_response(StatusCode::BAD_REQUEST, err),
+        Err(err) => error_response(StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
+    }
+}
+
 async fn tokenize(State(state): State<AppState>, Json(request): Json<TokenizeRequest>) -> Response {
     let (tx, rx) = oneshot::channel();
     if let Err(err) = state.jobs.send(Job::Tokenize { request, reply: tx }) {
@@ -687,11 +822,56 @@ async fn detokenize(
 
 fn spawn_worker(args: &Args) -> Result<mpsc::Sender<Job>, Box<dyn std::error::Error>> {
     let (tx, rx) = mpsc::channel::<Job>();
-    let params = LlamaParams::new(&args.model)
-        .with_n_ctx(args.n_ctx)
-        .with_n_gpu_layers(args.n_gpu_layers)
-        .with_embeddings(args.embeddings);
+    let pooling = match args.pooling.as_str() {
+        "none" => llama_crab::context::params::PoolingType::None,
+        "mean" => llama_crab::context::params::PoolingType::Mean,
+        "cls" => llama_crab::context::params::PoolingType::Cls,
+        "last" => llama_crab::context::params::PoolingType::Last,
+        "rank" => llama_crab::context::params::PoolingType::Rank,
+        _ => llama_crab::context::params::PoolingType::Unspecified,
+    };
+    let mut params = LlamaParams::new(&args.model);
+    if let Some(preset) = args.mobile_preset.as_deref() {
+        let preset = preset
+            .parse::<MobilePreset>()
+            .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?;
+        params = params.with_mobile_preset(preset);
+    }
+    let use_legacy_defaults = args.mobile_preset.is_none();
+    if let Some(n_ctx) = args
+        .n_ctx
+        .or_else(|| use_legacy_defaults.then_some(DEFAULT_N_CTX))
+    {
+        params = params.with_n_ctx(n_ctx);
+    }
+    if let Some(n_batch) = args
+        .n_batch
+        .or_else(|| use_legacy_defaults.then_some(DEFAULT_N_BATCH))
+    {
+        params = params.with_n_batch(n_batch);
+    }
+    if let Some(n_gpu_layers) = args
+        .n_gpu_layers
+        .or_else(|| use_legacy_defaults.then_some(DEFAULT_N_GPU_LAYERS))
+    {
+        params = params.with_n_gpu_layers(n_gpu_layers);
+    }
+    params = params
+        .with_embeddings(args.embeddings || args.reranking)
+        .with_pooling_type(pooling);
+    let n_threads = args
+        .n_threads
+        .or_else(|| use_legacy_defaults.then_some(DEFAULT_N_THREADS))
+        .unwrap_or(DEFAULT_N_THREADS);
+    if n_threads > 0 {
+        params = params.with_n_threads(n_threads);
+        if args.mobile_preset.is_some() {
+            params = params.with_n_threads_batch(n_threads);
+        }
+    }
     let model_name = args.model_name.clone();
+    let reranking_enabled = args.reranking;
+    let mmproj_path = args.mmproj.clone();
     thread::Builder::new()
         .name("llama-crab-worker".to_string())
         .spawn(move || {
@@ -702,7 +882,23 @@ fn spawn_worker(args: &Args) -> Result<mpsc::Sender<Job>, Box<dyn std::error::Er
                     return;
                 }
             };
+            #[cfg(feature = "mtmd")]
+            let mtmd = match mmproj_path.as_ref() {
+                Some(path) => match MtmdContext::init_from_file(path, llama.model()) {
+                    Ok(mtmd) => Some(mtmd),
+                    Err(err) => {
+                        tracing::error!(error = %err, mmproj = %path, "failed to load mmproj");
+                        return;
+                    }
+                },
+                None => None,
+            };
             for job in rx {
+                let multimodal = MultimodalRuntime {
+                    mmproj_path: mmproj_path.as_deref(),
+                    #[cfg(feature = "mtmd")]
+                    mtmd: mtmd.as_ref(),
+                };
                 match job {
                     Job::Complete { request, reply } => {
                         let _ = reply.send(run_completion(&mut llama, &model_name, request));
@@ -711,13 +907,23 @@ fn spawn_worker(args: &Args) -> Result<mpsc::Sender<Job>, Box<dyn std::error::Er
                         run_completion_stream(&mut llama, &model_name, request, chunks);
                     }
                     Job::Chat { request, reply } => {
-                        let _ = reply.send(run_chat(&mut llama, &model_name, request));
+                        let _ = reply.send(run_chat(&mut llama, &model_name, request, multimodal));
                     }
                     Job::ChatStream { request, chunks } => {
-                        run_chat_stream(&mut llama, &model_name, request, chunks);
+                        run_chat_stream(&mut llama, &model_name, request, chunks, multimodal);
                     }
                     Job::Embed { request, reply } => {
                         let _ = reply.send(run_embeddings(&mut llama, &model_name, request));
+                    }
+                    Job::Rerank { request, reply } => {
+                        if !reranking_enabled {
+                            let _ = reply.send(Err(
+                                "reranking endpoint not enabled (start with --reranking)"
+                                    .to_string(),
+                            ));
+                            continue;
+                        }
+                        let _ = reply.send(run_rerank(&mut llama, &model_name, request));
                     }
                     Job::Tokenize { request, reply } => {
                         let _ = reply.send(run_tokenize(&llama, request));
@@ -890,9 +1096,24 @@ fn run_chat(
     llama: &mut Llama,
     model_name: &str,
     request: ChatRequest,
+    multimodal: MultimodalRuntime<'_>,
 ) -> Result<ChatResponse, String> {
     let _requested_model = request.model.as_deref();
     let _request_user = request.user.as_deref();
+    validate_multimodal_request(&request, multimodal)?;
+    if request.has_media() {
+        #[cfg(feature = "mtmd")]
+        {
+            return run_chat_multimodal(llama, model_name, request, multimodal);
+        }
+        #[cfg(not(feature = "mtmd"))]
+        {
+            return Err(
+                "multimodal chat content requires llama-crab-server built with the 'mtmd' feature"
+                    .to_string(),
+            );
+        }
+    }
     let counts = request.choice_counts()?;
     let prompt = request.chat_prompt()?;
     let prompt_tokens = llama
@@ -942,14 +1163,482 @@ fn run_chat(
     })
 }
 
+#[cfg(feature = "mtmd")]
+fn run_chat_multimodal(
+    llama: &mut Llama,
+    model_name: &str,
+    request: ChatRequest,
+    multimodal: MultimodalRuntime<'_>,
+) -> Result<ChatResponse, String> {
+    if request.logprobs.unwrap_or(false) {
+        return Err("logprobs are not supported for multimodal chat".to_string());
+    }
+    let mtmd = multimodal
+        .mtmd
+        .ok_or_else(|| "multimodal projector is not initialized".to_string())?;
+    let counts = request.choice_counts()?;
+    let marker = default_media_marker();
+    let prompt = request.chat_prompt_with_media_marker(&marker)?;
+    let prompt_tokens = llama
+        .model()
+        .tokenize(&prompt, true, true)
+        .map_err(|err| err.to_string())?
+        .len() as u32;
+    let bitmaps = load_multimodal_bitmaps(&request)?;
+    let bitmap_refs: Vec<&MtmdBitmap> = bitmaps.iter().collect();
+    let mut choices = Vec::new();
+    let mut completion_tokens = 0_u32;
+    for index in 0..counts.public {
+        let options = request.completion_options(SamplingOptions::chat(), |text| {
+            llama
+                .model()
+                .tokenize(text, false, true)
+                .map_err(|err| err.to_string())
+        })?;
+        let mut sampler = build_request_sampler(llama, &options, &request.structured)?;
+        let completion = create_multimodal_completion_stream_with_sampler(
+            llama,
+            mtmd,
+            &prompt,
+            &bitmap_refs,
+            options,
+            &mut sampler,
+            |_| StreamControl::Continue,
+        )?;
+        completion_tokens += completion.n_tokens as u32;
+        let stop_reason = completion.stop_reason;
+        let message = chat_response_message(&request, completion.text)?;
+        let finish_reason = chat_finish_reason(stop_reason, &message);
+        choices.push(ChatChoice {
+            index: index as u32,
+            message,
+            logprobs: None,
+            finish_reason: Some(finish_reason),
+        });
+    }
+    Ok(ChatResponse {
+        id: format!("chatcmpl-{}", unix_timestamp()),
+        object: "chat.completion",
+        created: unix_timestamp(),
+        model: model_name.to_string(),
+        choices,
+        usage: Usage {
+            prompt_tokens,
+            completion_tokens,
+            total_tokens: prompt_tokens + completion_tokens,
+        },
+    })
+}
+
+#[cfg(feature = "mtmd")]
+fn run_chat_stream_multimodal(
+    llama: &mut Llama,
+    model_name: &str,
+    request: ChatRequest,
+    chunks: tokio_mpsc::UnboundedSender<Result<StreamFrame, String>>,
+    multimodal: MultimodalRuntime<'_>,
+) {
+    if request.logprobs.unwrap_or(false) {
+        let _ = chunks.send(Err(
+            "logprobs are not supported for multimodal chat".to_string()
+        ));
+        return;
+    }
+    let mtmd = match multimodal.mtmd {
+        Some(mtmd) => mtmd,
+        None => {
+            let _ = chunks.send(Err("multimodal projector is not initialized".to_string()));
+            return;
+        }
+    };
+    let id = format!("chatcmpl-{}", unix_timestamp());
+    let created = unix_timestamp();
+    let marker = default_media_marker();
+    let prompt = match request.chat_prompt_with_media_marker(&marker) {
+        Ok(prompt) => prompt,
+        Err(err) => {
+            let _ = chunks.send(Err(err));
+            return;
+        }
+    };
+    let bitmaps = match load_multimodal_bitmaps(&request) {
+        Ok(bitmaps) => bitmaps,
+        Err(err) => {
+            let _ = chunks.send(Err(err));
+            return;
+        }
+    };
+    let bitmap_refs: Vec<&MtmdBitmap> = bitmaps.iter().collect();
+    let options = match request.completion_options(SamplingOptions::chat(), |text| {
+        llama
+            .model()
+            .tokenize(text, false, true)
+            .map_err(|err| err.to_string())
+    }) {
+        Ok(options) => options,
+        Err(err) => {
+            let _ = chunks.send(Err(err));
+            return;
+        }
+    };
+    let mut sampler = match build_request_sampler(llama, &options, &request.structured) {
+        Ok(sampler) => sampler,
+        Err(err) => {
+            let _ = chunks.send(Err(err));
+            return;
+        }
+    };
+    let _ = chunks.send(Ok(chat_stream_role_frame(&id, created, model_name)));
+
+    let template_name = request_template(request.template.as_deref());
+    let tool_format = tool_format_for_template(template_name);
+    let mut tool_stream = ToolCallStream::new(tool_format);
+    let mut tool_call_seen = false;
+    let mut final_stop_reason: Option<StopReason> = None;
+
+    let result = create_multimodal_completion_stream_with_sampler(
+        llama,
+        mtmd,
+        &prompt,
+        &bitmap_refs,
+        options,
+        &mut sampler,
+        |chunk| {
+            for delta in tool_stream.feed(&chunk.text) {
+                tool_call_seen |= delta.completed.is_some();
+                if let Some(frame_delta) = chat_stream_tool_delta(&delta) {
+                    let _ = chunks.send(Ok(stream_frame_tool_call_delta(
+                        &id,
+                        created,
+                        model_name,
+                        frame_delta,
+                    )));
+                }
+            }
+            if !tool_stream_is_text_only(&tool_stream) {
+                if let Some(reason) = chunk.stop_reason {
+                    final_stop_reason = Some(reason);
+                }
+                return StreamControl::Continue;
+            }
+            let _ = chunks.send(Ok(stream_frame(
+                &id,
+                "chat.completion.chunk",
+                created,
+                model_name,
+                chunk,
+            )));
+            StreamControl::Continue
+        },
+    );
+    if let Err(err) = result {
+        let _ = chunks.send(Err(err));
+        return;
+    }
+    for delta in tool_stream.finish() {
+        if let Some(frame_delta) = chat_stream_tool_delta(&delta) {
+            let _ = chunks.send(Ok(stream_frame_tool_call_delta(
+                &id,
+                created,
+                model_name,
+                frame_delta,
+            )));
+        }
+        tool_call_seen |= delta.completed.is_some();
+    }
+    if tool_call_seen {
+        let _ = chunks.send(Ok(stream_frame(
+            &id,
+            "chat.completion.chunk",
+            created,
+            model_name,
+            CompletionChunk {
+                text: String::new(),
+                token: None,
+                n_tokens: 0,
+                stop_reason: Some(StopReason::ToolCalls),
+                logprobs: None,
+            },
+        )));
+    } else if let Some(reason) = final_stop_reason {
+        let _ = chunks.send(Ok(stream_frame(
+            &id,
+            "chat.completion.chunk",
+            created,
+            model_name,
+            CompletionChunk {
+                text: String::new(),
+                token: None,
+                n_tokens: 0,
+                stop_reason: Some(reason),
+                logprobs: None,
+            },
+        )));
+    }
+}
+
+#[cfg(feature = "mtmd")]
+fn load_multimodal_bitmaps(request: &ChatRequest) -> Result<Vec<MtmdBitmap>, String> {
+    request
+        .media_inputs()
+        .into_iter()
+        .map(|media| {
+            if media.kind != ChatMediaKind::Image {
+                return Err(format!(
+                    "unsupported multimodal chat content part type: {}",
+                    media.kind.content_type()
+                ));
+            }
+            let path = media_url_to_local_path(&media.url)?;
+            MtmdBitmap::from_file(path).map_err(|err| err.to_string())
+        })
+        .collect()
+}
+
+#[cfg(feature = "mtmd")]
+fn media_url_to_local_path(url: &str) -> Result<String, String> {
+    if let Some(path) = url.strip_prefix("file://") {
+        return Ok(path.to_string());
+    }
+    if url.starts_with("data:") || url.contains("://") {
+        return Err("image_url.url must be a local file path or file:// URL".to_string());
+    }
+    Ok(url.to_string())
+}
+
+#[cfg(feature = "mtmd")]
+fn create_multimodal_completion_stream_with_sampler<F>(
+    llama: &mut Llama,
+    mtmd: &MtmdContext,
+    prompt: &str,
+    bitmaps: &[&MtmdBitmap],
+    options: CompletionOptions,
+    sampler: &mut LlamaSampler,
+    mut on_chunk: F,
+) -> Result<Completion, String>
+where
+    F: FnMut(CompletionChunk) -> StreamControl,
+{
+    let _ = llama.context().seq_rm(0, -1, -1);
+    let chunks = mtmd
+        .tokenize(MtmdInputText::new(prompt), bitmaps)
+        .map_err(|err| err.to_string())?;
+    let ctx_ptr = llama.context().raw_handle();
+    let n_past =
+        unsafe { chunks.eval(mtmd, ctx_ptr, 0, 0, llama.context().n_batch() as i32, true) }
+            .map_err(|err| err.to_string())?;
+
+    let eos = llama.model().token_eos();
+    let eot = llama.model().token_eot();
+    let mut generated = String::new();
+    let mut stop_buffer = ChatStopBuffer::new(options.stop_sequences);
+    let mut stop_reason = StopReason::Length;
+    let mut n_generated = 0_usize;
+
+    for generated_idx in 0..options.max_tokens {
+        let idx = if generated_idx == 0 { -1 } else { 0 };
+        let next: LlamaToken = unsafe { sampler.sample(ctx_ptr, idx) };
+        sampler.accept(next);
+        if next == eos || next == eot {
+            stop_reason = StopReason::Eos;
+            break;
+        }
+        let piece = llama
+            .model()
+            .detokenize(&[next], false)
+            .map_err(|err| err.to_string())?;
+        n_generated = generated_idx + 1;
+        let step = stop_buffer.push(&piece);
+        if chat_emit_chunk(
+            &mut on_chunk,
+            &mut generated,
+            step.text,
+            Some(next),
+            n_generated,
+            None,
+        ) == StreamControl::Stop
+        {
+            stop_reason = StopReason::Stop;
+            break;
+        }
+        if step.stopped {
+            stop_reason = StopReason::Stop;
+            break;
+        }
+
+        let single = LlamaBatch::one(next, n_past + generated_idx as i32, 0, true);
+        llama
+            .context()
+            .decode(&single)
+            .map_err(|err| err.to_string())?;
+    }
+
+    let final_text = format!(
+        "{}{}",
+        stop_buffer.flush(),
+        options.suffix.as_deref().unwrap_or("")
+    );
+    if chat_emit_chunk(
+        &mut on_chunk,
+        &mut generated,
+        final_text,
+        None,
+        n_generated,
+        Some(stop_reason),
+    ) == StreamControl::Stop
+    {
+        stop_reason = StopReason::Stop;
+    }
+
+    Ok(Completion {
+        text: generated,
+        n_tokens: n_generated,
+        stop_reason,
+        logprobs: None,
+    })
+}
+
+#[cfg(feature = "mtmd")]
+fn chat_emit_chunk<F>(
+    on_chunk: &mut F,
+    generated: &mut String,
+    text: String,
+    token: Option<LlamaToken>,
+    n_tokens: usize,
+    stop_reason: Option<StopReason>,
+) -> StreamControl
+where
+    F: FnMut(CompletionChunk) -> StreamControl,
+{
+    if text.is_empty() && stop_reason.is_none() {
+        return StreamControl::Continue;
+    }
+    generated.push_str(&text);
+    on_chunk(CompletionChunk {
+        text,
+        token,
+        n_tokens,
+        stop_reason,
+        logprobs: None,
+    })
+}
+
+#[cfg(feature = "mtmd")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ChatStopBuffer {
+    pending: String,
+    stop_sequences: Vec<String>,
+    stopped: bool,
+}
+
+#[cfg(feature = "mtmd")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ChatStopBufferStep {
+    text: String,
+    stopped: bool,
+}
+
+#[cfg(feature = "mtmd")]
+impl ChatStopBuffer {
+    fn new(stop_sequences: Vec<String>) -> Self {
+        Self {
+            pending: String::new(),
+            stop_sequences: stop_sequences
+                .into_iter()
+                .filter(|stop| !stop.is_empty())
+                .collect(),
+            stopped: false,
+        }
+    }
+
+    fn push(&mut self, text: &str) -> ChatStopBufferStep {
+        if self.stopped {
+            return ChatStopBufferStep {
+                text: String::new(),
+                stopped: true,
+            };
+        }
+        if self.stop_sequences.is_empty() {
+            return ChatStopBufferStep {
+                text: text.to_string(),
+                stopped: false,
+            };
+        }
+        self.pending.push_str(text);
+        if let Some(stop_start) = self.find_stop_start() {
+            self.stopped = true;
+            let text = self.pending[..stop_start].to_string();
+            self.pending.clear();
+            return ChatStopBufferStep {
+                text,
+                stopped: true,
+            };
+        }
+        let hold_start = self.longest_stop_prefix_suffix_start();
+        let text = self.pending[..hold_start].to_string();
+        self.pending = self.pending[hold_start..].to_string();
+        ChatStopBufferStep {
+            text,
+            stopped: false,
+        }
+    }
+
+    fn flush(&mut self) -> String {
+        std::mem::take(&mut self.pending)
+    }
+
+    fn find_stop_start(&self) -> Option<usize> {
+        self.stop_sequences
+            .iter()
+            .filter_map(|stop| self.pending.find(stop))
+            .min()
+    }
+
+    fn longest_stop_prefix_suffix_start(&self) -> usize {
+        let mut hold_start = self.pending.len();
+        for (start, _) in self.pending.char_indices() {
+            let suffix = &self.pending[start..];
+            if self
+                .stop_sequences
+                .iter()
+                .any(|stop| stop.starts_with(suffix))
+            {
+                hold_start = start;
+                break;
+            }
+        }
+        hold_start
+    }
+}
+
 fn run_chat_stream(
     llama: &mut Llama,
     model_name: &str,
     request: ChatRequest,
     chunks: tokio_mpsc::UnboundedSender<Result<StreamFrame, String>>,
+    multimodal: MultimodalRuntime<'_>,
 ) {
     let _requested_model = request.model.as_deref();
     let _request_user = request.user.as_deref();
+    if let Err(err) = validate_multimodal_request(&request, multimodal) {
+        let _ = chunks.send(Err(err));
+        return;
+    }
+    if request.has_media() {
+        #[cfg(feature = "mtmd")]
+        {
+            run_chat_stream_multimodal(llama, model_name, request, chunks, multimodal);
+            return;
+        }
+        #[cfg(not(feature = "mtmd"))]
+        {
+            let _ = chunks.send(Err(
+                "multimodal chat content requires llama-crab-server built with the 'mtmd' feature"
+                    .to_string(),
+            ));
+            return;
+        }
+    }
     let id = format!("chatcmpl-{}", unix_timestamp());
     let created = unix_timestamp();
     let options = match request.completion_options(SamplingOptions::chat(), |text| {
@@ -979,8 +1668,36 @@ fn run_chat_stream(
         }
     };
     let _ = chunks.send(Ok(chat_stream_role_frame(&id, created, model_name)));
+
+    let template_name = request_template(request.template.as_deref());
+    let tool_format = tool_format_for_template(template_name);
+    let mut tool_stream = ToolCallStream::new(tool_format);
+    let mut tool_call_seen = false;
+    let mut final_stop_reason: Option<StopReason> = None;
+
     let result =
         llama.create_completion_stream_with_sampler(&prompt, options, &mut sampler, |chunk| {
+            // Feed the chunk through the tool parser; emit any deltas
+            // produced as separate SSE frames.
+            for delta in tool_stream.feed(&chunk.text) {
+                tool_call_seen |= delta.completed.is_some();
+                if let Some(frame_delta) = chat_stream_tool_delta(&delta) {
+                    let _ = chunks.send(Ok(stream_frame_tool_call_delta(
+                        &id,
+                        created,
+                        model_name,
+                        frame_delta,
+                    )));
+                }
+            }
+            // While a tool call is being assembled, suppress content frames
+            // (the chunk text becomes part of the tool arguments).
+            if !tool_stream_is_text_only(&tool_stream) {
+                if let Some(reason) = chunk.stop_reason {
+                    final_stop_reason = Some(reason);
+                }
+                return StreamControl::Continue;
+            }
             let _ = chunks.send(Ok(stream_frame(
                 &id,
                 "chat.completion.chunk",
@@ -992,7 +1709,82 @@ fn run_chat_stream(
         });
     if let Err(err) = result {
         let _ = chunks.send(Err(err.to_string()));
+        return;
     }
+    // Flush any pending tool-call deltas at end-of-stream.
+    for delta in tool_stream.finish() {
+        if let Some(frame_delta) = chat_stream_tool_delta(&delta) {
+            let _ = chunks.send(Ok(stream_frame_tool_call_delta(
+                &id,
+                created,
+                model_name,
+                frame_delta,
+            )));
+        }
+        tool_call_seen |= delta.completed.is_some();
+    }
+    if tool_call_seen {
+        let _ = chunks.send(Ok(stream_frame(
+            &id,
+            "chat.completion.chunk",
+            created,
+            model_name,
+            CompletionChunk {
+                text: String::new(),
+                token: None,
+                n_tokens: 0,
+                stop_reason: Some(StopReason::ToolCalls),
+                logprobs: None,
+            },
+        )));
+    } else if let Some(reason) = final_stop_reason {
+        let _ = chunks.send(Ok(stream_frame(
+            &id,
+            "chat.completion.chunk",
+            created,
+            model_name,
+            CompletionChunk {
+                text: String::new(),
+                token: None,
+                n_tokens: 0,
+                stop_reason: Some(reason),
+                logprobs: None,
+            },
+        )));
+    }
+}
+
+fn tool_format_for_template(template: llama_crab::chat::BuiltinTemplate) -> ToolFormat {
+    use llama_crab::chat::BuiltinTemplate as T;
+    match template {
+        T::ChatMl => ToolFormat::ChatMl,
+        T::MistralInstruct => ToolFormat::Mistral,
+        T::Plain => ToolFormat::Plain,
+        _ => ToolFormat::default(),
+    }
+}
+
+fn tool_stream_is_text_only(stream: &ToolCallStream) -> bool {
+    !stream.in_call()
+}
+
+fn chat_stream_tool_delta(delta: &ToolCallDelta) -> Option<ChatStreamToolCall> {
+    if delta.id.is_none() && delta.name.is_none() && delta.arguments.is_none() {
+        return None;
+    }
+    Some(ChatStreamToolCall {
+        index: delta.index,
+        id: delta.id.clone(),
+        kind: if delta.id.is_some() {
+            Some("function")
+        } else {
+            None
+        },
+        function: ChatStreamToolCallFunction {
+            name: delta.name.clone(),
+            arguments: delta.arguments.clone(),
+        },
+    })
 }
 
 fn run_embeddings(
@@ -1002,6 +1794,15 @@ fn run_embeddings(
 ) -> Result<EmbeddingResponse, String> {
     let _requested_model = request.model.as_deref();
     let _request_user = request.user.as_deref();
+    let use_base64 = match request.encoding_format.as_deref() {
+        None | Some("float") => false,
+        Some("base64") => true,
+        Some(other) => {
+            return Err(format!(
+                "encoding_format must be 'float' or 'base64', got '{other}'"
+            ));
+        }
+    };
     let inputs = match request.input {
         EmbeddingInput::Single(text) => vec![text],
         EmbeddingInput::Many(texts) => texts,
@@ -1013,10 +1814,21 @@ fn run_embeddings(
         .vectors
         .into_iter()
         .enumerate()
-        .map(|(index, embedding)| EmbeddingItem {
-            object: "embedding",
-            embedding,
-            index: index as u32,
+        .map(|(index, embedding)| {
+            let value = if use_base64 {
+                let bytes: Vec<u8> = embedding.iter().flat_map(|f| f.to_le_bytes()).collect();
+                use base64::Engine as _;
+                let encoded = base64::engine::general_purpose::STANDARD.encode(&bytes);
+                EmbeddingValue::Base64(encoded)
+            } else {
+                EmbeddingValue::Float(embedding)
+            };
+            EmbeddingItem {
+                object: "embedding",
+                embedding: value,
+                index: index as u32,
+                encoding_format: if use_base64 { Some("base64") } else { None },
+            }
         })
         .collect();
     Ok(EmbeddingResponse {
@@ -1028,6 +1840,49 @@ fn run_embeddings(
             total_tokens: batch.total_tokens,
         },
     })
+}
+
+fn run_rerank(
+    llama: &mut Llama,
+    model_name: &str,
+    request: RerankRequest,
+) -> Result<RerankResponse, String> {
+    let _requested_model = request.model.as_deref();
+    let docs: Vec<&str> = request.documents.iter().map(String::as_str).collect();
+    let scores = llama
+        .rerank(&request.query, &docs)
+        .map_err(|err| err.to_string())?;
+    Ok(rerank_response_from_scores(
+        model_name,
+        &request.documents,
+        scores,
+        request.top_n,
+    ))
+}
+
+fn rerank_response_from_scores(
+    model_name: &str,
+    documents: &[String],
+    scores: Vec<f32>,
+    top_n: Option<usize>,
+) -> RerankResponse {
+    let mut indexed: Vec<(usize, f32)> = scores.into_iter().enumerate().collect();
+    indexed.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    if let Some(top_n) = top_n {
+        indexed.truncate(top_n);
+    }
+    let results = indexed
+        .into_iter()
+        .map(|(i, score)| RerankResult {
+            index: i as u32,
+            document: documents.get(i).cloned(),
+            relevance_score: score,
+        })
+        .collect();
+    RerankResponse {
+        model: model_name.to_string(),
+        results,
+    }
 }
 
 fn run_tokenize(llama: &Llama, request: TokenizeRequest) -> Result<TokenizeResponse, String> {
@@ -1065,6 +1920,13 @@ fn run_detokenize(llama: &Llama, request: DetokenizeRequest) -> Result<Detokeniz
 }
 
 fn convert_messages(messages: Vec<ChatRequestMessage>) -> Result<Vec<ChatMessage>, String> {
+    convert_messages_with_media_marker(messages, None)
+}
+
+fn convert_messages_with_media_marker(
+    messages: Vec<ChatRequestMessage>,
+    media_marker: Option<&str>,
+) -> Result<Vec<ChatMessage>, String> {
     messages
         .into_iter()
         .map(|message| {
@@ -1076,7 +1938,7 @@ fn convert_messages(messages: Vec<ChatRequestMessage>) -> Result<Vec<ChatMessage
                 "function" => Role::Tool,
                 other => return Err(format!("unknown chat role: {other}")),
             };
-            let mut converted = ChatMessage::new(role, message.content);
+            let mut converted = ChatMessage::new(role, message.content.render(media_marker));
             converted.tool_call_id = message.tool_call_id;
             converted.tool_calls = message
                 .tool_calls
@@ -1087,6 +1949,90 @@ fn convert_messages(messages: Vec<ChatRequestMessage>) -> Result<Vec<ChatMessage
             Ok(converted)
         })
         .collect()
+}
+
+impl ChatContent {
+    fn from_text(text: impl Into<String>) -> Self {
+        Self {
+            parts: vec![ChatContentPart::Text(text.into())],
+        }
+    }
+
+    fn render(&self, media_marker: Option<&str>) -> String {
+        let mut rendered = String::new();
+        for part in &self.parts {
+            match part {
+                ChatContentPart::Text(text) => rendered.push_str(text),
+                ChatContentPart::Media(_) => {
+                    if let Some(marker) = media_marker {
+                        rendered.push_str(marker);
+                    }
+                }
+            }
+        }
+        rendered
+    }
+
+    fn has_media(&self) -> bool {
+        self.parts
+            .iter()
+            .any(|part| matches!(part, ChatContentPart::Media(_)))
+    }
+
+    #[cfg(any(feature = "mtmd", test))]
+    fn media_inputs(&self) -> impl Iterator<Item = &ChatMediaInput> {
+        self.parts.iter().filter_map(|part| match part {
+            ChatContentPart::Text(_) => None,
+            ChatContentPart::Media(media) => Some(media),
+        })
+    }
+}
+
+impl ChatMediaKind {
+    #[cfg(feature = "mtmd")]
+    fn content_type(self) -> &'static str {
+        match self {
+            ChatMediaKind::Image => "image_url",
+            ChatMediaKind::Audio => "audio_url",
+            ChatMediaKind::Video => "video_url",
+        }
+    }
+}
+
+fn validate_multimodal_request(
+    request: &ChatRequest,
+    runtime: MultimodalRuntime<'_>,
+) -> Result<(), String> {
+    if !request.has_media() {
+        return Ok(());
+    }
+    if runtime.mmproj_path.is_none() {
+        return Err("multimodal chat content requires --mmproj".to_string());
+    }
+    #[cfg(not(feature = "mtmd"))]
+    {
+        return Err(
+            "multimodal chat content requires llama-crab-server built with the 'mtmd' feature"
+                .to_string(),
+        );
+    }
+    #[cfg(feature = "mtmd")]
+    {
+        if runtime.mtmd.is_none() {
+            return Err("multimodal projector is not initialized".to_string());
+        }
+        if let Some(media) = request
+            .media_inputs()
+            .into_iter()
+            .find(|media| media.kind != ChatMediaKind::Image)
+        {
+            return Err(format!(
+                "unsupported multimodal chat content part type: {}",
+                media.kind.content_type()
+            ));
+        }
+        Ok(())
+    }
 }
 
 impl CompletionRequest {
@@ -1142,6 +2088,28 @@ impl ChatRequest {
         let messages = convert_messages(self.messages.clone())?;
         let tools = self.chat_tools()?;
         Ok(render_builtin(template, &messages, &tools, true))
+    }
+
+    #[cfg(any(feature = "mtmd", test))]
+    fn chat_prompt_with_media_marker(&self, marker: &str) -> Result<String, String> {
+        let template = request_template(self.template.as_deref());
+        let messages = convert_messages_with_media_marker(self.messages.clone(), Some(marker))?;
+        let tools = self.chat_tools()?;
+        Ok(render_builtin(template, &messages, &tools, true))
+    }
+
+    fn has_media(&self) -> bool {
+        self.messages
+            .iter()
+            .any(|message| message.content.has_media())
+    }
+
+    #[cfg(any(feature = "mtmd", test))]
+    fn media_inputs(&self) -> Vec<&ChatMediaInput> {
+        self.messages
+            .iter()
+            .flat_map(|message| message.content.media_inputs())
+            .collect()
     }
 
     fn completion_options(
@@ -1441,11 +2409,13 @@ fn stream_frame(
                     Some(ChatStreamDelta {
                         role: None,
                         content: None,
+                        tool_calls: None,
                     })
                 } else {
                     Some(ChatStreamDelta {
                         role: None,
                         content: Some(chunk.text),
+                        tool_calls: None,
                     })
                 }
             } else {
@@ -1453,6 +2423,31 @@ fn stream_frame(
             },
             logprobs,
             finish_reason: chunk.stop_reason.map(stop_reason),
+        }],
+    }
+}
+
+fn stream_frame_tool_call_delta(
+    id: &str,
+    created: u64,
+    model: &str,
+    delta: ChatStreamToolCall,
+) -> StreamFrame {
+    StreamFrame {
+        id: id.to_string(),
+        object: "chat.completion.chunk",
+        created,
+        model: model.to_string(),
+        choices: vec![StreamChoice {
+            index: 0,
+            text: None,
+            delta: Some(ChatStreamDelta {
+                role: None,
+                content: None,
+                tool_calls: Some(vec![delta]),
+            }),
+            logprobs: None,
+            finish_reason: None,
         }],
     }
 }
@@ -1469,6 +2464,7 @@ fn chat_stream_role_frame(id: &str, created: u64, model: &str) -> StreamFrame {
             delta: Some(ChatStreamDelta {
                 role: Some("assistant"),
                 content: None,
+                tool_calls: None,
             }),
             logprobs: None,
             finish_reason: None,
@@ -1519,6 +2515,7 @@ fn stop_reason(reason: llama_crab::StopReason) -> String {
     match reason {
         llama_crab::StopReason::Length => "length",
         llama_crab::StopReason::Eos | llama_crab::StopReason::Stop => "stop",
+        llama_crab::StopReason::ToolCalls => "tool_calls",
     }
     .to_string()
 }
@@ -1638,30 +2635,57 @@ fn default_tool_parameters() -> Value {
     })
 }
 
-fn deserialize_chat_content<'de, D>(deserializer: D) -> Result<String, D::Error>
+fn deserialize_chat_content<'de, D>(deserializer: D) -> Result<ChatContent, D::Error>
 where
     D: Deserializer<'de>,
 {
     let value = Option::<Value>::deserialize(deserializer)?;
-    chat_content_to_string(value.as_ref()).map_err(de::Error::custom)
+    chat_content_from_value(value.as_ref()).map_err(de::Error::custom)
 }
 
-fn chat_content_to_string(value: Option<&Value>) -> Result<String, String> {
+fn chat_content_from_value(value: Option<&Value>) -> Result<ChatContent, String> {
     let Some(value) = value else {
-        return Ok(String::new());
+        return Ok(ChatContent::default());
     };
     match value {
-        Value::Null => Ok(String::new()),
-        Value::String(content) => Ok(content.clone()),
+        Value::Null => Ok(ChatContent::default()),
+        Value::String(content) => Ok(ChatContent::from_text(content.clone())),
         Value::Array(parts) => {
-            let mut content = String::new();
+            let mut content = ChatContent::default();
             for part in parts {
                 let kind = part.get("type").and_then(Value::as_str).unwrap_or("text");
                 match kind {
                     "text" => {
                         if let Some(text) = part.get("text").and_then(Value::as_str) {
-                            content.push_str(text);
+                            content.parts.push(ChatContentPart::Text(text.to_string()));
                         }
+                    }
+                    "image_url" => {
+                        content
+                            .parts
+                            .push(ChatContentPart::Media(media_input_from_part(
+                                part,
+                                "image_url",
+                                ChatMediaKind::Image,
+                            )?))
+                    }
+                    "audio_url" => {
+                        content
+                            .parts
+                            .push(ChatContentPart::Media(media_input_from_part(
+                                part,
+                                "audio_url",
+                                ChatMediaKind::Audio,
+                            )?))
+                    }
+                    "video_url" => {
+                        content
+                            .parts
+                            .push(ChatContentPart::Media(media_input_from_part(
+                                part,
+                                "video_url",
+                                ChatMediaKind::Video,
+                            )?))
                     }
                     other => return Err(format!("unsupported chat content part type: {other}")),
                 }
@@ -1670,6 +2694,36 @@ fn chat_content_to_string(value: Option<&Value>) -> Result<String, String> {
         }
         other => Err(format!("unsupported chat content value: {other}")),
     }
+}
+
+fn media_input_from_part(
+    part: &Value,
+    field: &str,
+    kind: ChatMediaKind,
+) -> Result<ChatMediaInput, String> {
+    let raw = part
+        .get(field)
+        .ok_or_else(|| format!("missing {field} chat content part"))?;
+    let (url, detail) = match raw {
+        Value::String(url) => (url.clone(), None),
+        Value::Object(object) => {
+            let url = object
+                .get("url")
+                .and_then(Value::as_str)
+                .ok_or_else(|| format!("{field}.url must be a string"))?
+                .to_string();
+            let detail = object
+                .get("detail")
+                .and_then(Value::as_str)
+                .map(str::to_string);
+            (url, detail)
+        }
+        other => return Err(format!("{field} must be a string or object, got {other}")),
+    };
+    if url.trim().is_empty() {
+        return Err(format!("{field}.url cannot be empty"));
+    }
+    Ok(ChatMediaInput { kind, url, detail })
 }
 
 fn deserialize_stop_sequences<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
@@ -2149,12 +3203,74 @@ mod tests {
     }
 
     #[test]
+    fn tool_call_delta_to_stream_frame_serializes_wire_shape() {
+        let delta = ChatStreamToolCall {
+            index: 0,
+            id: Some("call_0".to_string()),
+            kind: Some("function"),
+            function: ChatStreamToolCallFunction {
+                name: Some("get_weather".to_string()),
+                arguments: None,
+            },
+        };
+        let frame = stream_frame_tool_call_delta("chatcmpl-test", 7, "model", delta);
+        let value = serde_json::to_value(&frame).unwrap();
+        assert_eq!(value["object"], "chat.completion.chunk");
+        assert_eq!(value["choices"][0]["delta"]["tool_calls"][0]["index"], 0);
+        assert_eq!(
+            value["choices"][0]["delta"]["tool_calls"][0]["id"],
+            "call_0"
+        );
+        assert_eq!(
+            value["choices"][0]["delta"]["tool_calls"][0]["type"],
+            "function"
+        );
+        assert_eq!(
+            value["choices"][0]["delta"]["tool_calls"][0]["function"]["name"],
+            "get_weather"
+        );
+        assert!(value["choices"][0]["delta"]
+            .get("content")
+            .map(|v| v.is_null())
+            .unwrap_or(true));
+    }
+
+    #[test]
+    fn chat_stream_tool_delta_passes_arguments_through() {
+        let delta = ToolCallDelta {
+            index: 1,
+            id: None,
+            name: None,
+            arguments: Some(r#"{"city":"T"#.to_string()),
+            completed: None,
+        };
+        let mapped = chat_stream_tool_delta(&delta).expect("should produce a delta");
+        assert_eq!(mapped.index, 1);
+        assert!(mapped.id.is_none());
+        assert!(mapped.function.name.is_none());
+        assert_eq!(mapped.function.arguments.as_deref(), Some(r#"{"city":"T"#));
+        assert!(mapped.kind.is_none());
+    }
+
+    #[test]
+    fn chat_stream_tool_delta_skips_pure_completion_marker() {
+        let delta = ToolCallDelta {
+            index: 0,
+            id: None,
+            name: None,
+            arguments: None,
+            completed: Some(ToolCall::new("call_0", "f", serde_json::json!({}))),
+        };
+        assert!(chat_stream_tool_delta(&delta).is_none());
+    }
+
+    #[test]
     fn chat_request_applies_logprobs_when_enabled() {
         let request = ChatRequest {
             model: None,
             messages: vec![ChatRequestMessage {
                 role: "user".to_string(),
-                content: "Hello".to_string(),
+                content: ChatContent::from_text("Hello"),
                 tool_call_id: None,
                 tool_calls: Vec::new(),
                 name: None,
@@ -2183,6 +3299,85 @@ mod tests {
 
         assert_eq!(options.min_tokens, 1);
         assert_eq!(options.logprobs, Some(3));
+    }
+
+    #[test]
+    fn chat_request_accepts_image_url_content_parts() {
+        let request: ChatRequest = serde_json::from_value(json!({
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "Describe "},
+                    {"type": "image_url", "image_url": {"url": "fixtures/panda.png", "detail": "low"}},
+                    {"type": "text", "text": " briefly"}
+                ]
+            }]
+        }))
+        .unwrap();
+
+        assert!(request.has_media());
+        assert_eq!(
+            request.messages[0].content.render(None),
+            "Describe  briefly"
+        );
+        assert_eq!(
+            request.messages[0].content.render(Some("<image>")),
+            "Describe <image> briefly"
+        );
+        let media = request.media_inputs();
+        assert_eq!(media.len(), 1);
+        assert_eq!(media[0].kind, ChatMediaKind::Image);
+        assert_eq!(media[0].url, "fixtures/panda.png");
+        assert_eq!(media[0].detail.as_deref(), Some("low"));
+        assert!(request
+            .chat_prompt_with_media_marker("<image>")
+            .unwrap()
+            .contains("<image>"));
+    }
+
+    #[test]
+    fn multimodal_chat_requires_mmproj() {
+        let request: ChatRequest = serde_json::from_value(json!({
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "Describe this"},
+                    {"type": "image_url", "image_url": "fixtures/panda.png"}
+                ]
+            }]
+        }))
+        .unwrap();
+        let runtime = MultimodalRuntime {
+            mmproj_path: None,
+            #[cfg(feature = "mtmd")]
+            mtmd: None,
+        };
+
+        assert_eq!(
+            validate_multimodal_request(&request, runtime).unwrap_err(),
+            "multimodal chat content requires --mmproj"
+        );
+    }
+
+    #[cfg(not(feature = "mtmd"))]
+    #[test]
+    fn multimodal_chat_requires_mtmd_build() {
+        let request: ChatRequest = serde_json::from_value(json!({
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": "fixtures/panda.png"}
+                ]
+            }]
+        }))
+        .unwrap();
+        let runtime = MultimodalRuntime {
+            mmproj_path: Some("models/mmproj.gguf"),
+        };
+
+        assert!(validate_multimodal_request(&request, runtime)
+            .unwrap_err()
+            .contains("'mtmd' feature"));
     }
 
     #[test]
@@ -2377,6 +3572,94 @@ mod tests {
 
         assert_eq!(request.model.as_deref(), Some("configured-model"));
         assert_eq!(request.user.as_deref(), Some("client-user"));
+    }
+
+    #[test]
+    fn embedding_request_accepts_base64_encoding_format() {
+        let request: EmbeddingRequest = serde_json::from_value(json!({
+            "input": "hello",
+            "encoding_format": "base64"
+        }))
+        .unwrap();
+        assert_eq!(request.encoding_format.as_deref(), Some("base64"));
+    }
+
+    #[test]
+    fn embedding_base64_value_serializes_as_single_string() {
+        let item = EmbeddingItem {
+            object: "embedding",
+            embedding: EmbeddingValue::Base64("AAABAA==".to_string()),
+            index: 0,
+            encoding_format: Some("base64"),
+        };
+        let value = serde_json::to_value(&item).unwrap();
+        assert!(value["embedding"].is_string());
+        assert_eq!(value["embedding"], "AAABAA==");
+        assert_eq!(value["encoding_format"], "base64");
+    }
+
+    #[test]
+    fn embedding_float_value_serializes_as_array() {
+        let item = EmbeddingItem {
+            object: "embedding",
+            embedding: EmbeddingValue::Float(vec![0.1, 0.2, 0.3]),
+            index: 0,
+            encoding_format: None,
+        };
+        let value = serde_json::to_value(&item).unwrap();
+        assert!(value["embedding"].is_array());
+        assert!(value.get("encoding_format").is_none());
+    }
+
+    #[test]
+    fn base64_embedding_roundtrip_produces_native_floats() {
+        let floats = vec![0.5_f32, -0.25, 1.0, 42.0];
+        let bytes: Vec<u8> = floats.iter().flat_map(|f| f.to_le_bytes()).collect();
+        use base64::Engine as _;
+        let encoded = base64::engine::general_purpose::STANDARD.encode(&bytes);
+        let decoded = base64::engine::general_purpose::STANDARD
+            .decode(&encoded)
+            .unwrap();
+        let recovered: Vec<f32> = decoded
+            .chunks_exact(4)
+            .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+            .collect();
+        assert_eq!(recovered, floats);
+    }
+
+    #[test]
+    fn rerank_request_accepts_openai_shape() {
+        let request: RerankRequest = serde_json::from_value(json!({
+            "model": "reranker",
+            "query": "what is panda?",
+            "top_n": 2,
+            "documents": ["bear", "car", "panda bear"]
+        }))
+        .unwrap();
+
+        assert_eq!(request.model.as_deref(), Some("reranker"));
+        assert_eq!(request.query, "what is panda?");
+        assert_eq!(request.top_n, Some(2));
+        assert_eq!(request.documents.len(), 3);
+    }
+
+    #[test]
+    fn rerank_response_sorts_by_score_and_respects_top_n() {
+        let documents = vec![
+            "bear".to_string(),
+            "car".to_string(),
+            "panda bear".to_string(),
+        ];
+        let response =
+            rerank_response_from_scores("reranker", &documents, vec![0.2, -1.0, 1.5], Some(2));
+
+        assert_eq!(response.model, "reranker");
+        assert_eq!(response.results.len(), 2);
+        assert_eq!(response.results[0].index, 2);
+        assert_eq!(response.results[0].document.as_deref(), Some("panda bear"));
+        assert_eq!(response.results[0].relevance_score, 1.5);
+        assert_eq!(response.results[1].index, 0);
+        assert_eq!(response.results[1].document.as_deref(), Some("bear"));
     }
 
     #[test]

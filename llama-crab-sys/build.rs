@@ -74,7 +74,9 @@ struct Features {
     metal: bool,
     vulkan: bool,
     rocm: bool,
+    opencl: bool,
     openmp: bool,
+    kleidiai: bool,
     dynamic_link: bool,
     dynamic_backends: bool,
     system_ggml: bool,
@@ -94,7 +96,9 @@ impl Features {
             metal: env_feature("METAL"),
             vulkan: env_feature("VULKAN"),
             rocm: env_feature("ROCM"),
+            opencl: env_feature("OPENCL"),
             openmp: env_feature("OPENMP"),
+            kleidiai: env_feature("KLEIDIAI"),
             dynamic_link: env_feature("DYNAMIC_LINK"),
             dynamic_backends: env_feature("DYNAMIC_BACKENDS"),
             system_ggml: env_feature("SYSTEM_GGML"),
@@ -120,6 +124,10 @@ fn main() {
 
     let features = Features::from_env();
     let os = TargetOs::from_env();
+
+    if features.shared_stdcxx && features.static_stdcxx {
+        panic!("features 'shared-stdcxx' and 'static-stdcxx' are mutually exclusive");
+    }
 
     // Trigger a rebuild whenever the wrapper headers, our own build.rs or any
     // tracked llama.cpp source file changes.
@@ -343,7 +351,19 @@ fn build_llama_cpp(
     dst.define("GGML_METAL", if features.metal { "ON" } else { "OFF" });
     dst.define("GGML_VULKAN", if features.vulkan { "ON" } else { "OFF" });
     dst.define("GGML_HIP", if features.rocm { "ON" } else { "OFF" });
+    dst.define("GGML_OPENCL", if features.opencl { "ON" } else { "OFF" });
     dst.define("GGML_OPENMP", if features.openmp { "ON" } else { "OFF" });
+    dst.define(
+        "GGML_CPU_KLEIDIAI",
+        if features.kleidiai { "ON" } else { "OFF" },
+    );
+    define_optional_env(&mut dst, "OPENCL_HEADERS_DIR", "OpenCL_INCLUDE_DIRS");
+    define_optional_env(
+        &mut dst,
+        "OPENCL_ICD_LOADER_HEADERS_DIR",
+        "OPENCL_ICD_LOADER_HEADERS_DIR",
+    );
+    define_optional_env(&mut dst, "OpenCL_LIBRARY", "OpenCL_LIBRARY");
     dst.define(
         "GGML_BACKEND_DL",
         if features.dynamic_backends {
@@ -371,6 +391,15 @@ fn build_llama_cpp(
     discover_libs(&install)
 }
 
+fn define_optional_env(dst: &mut Config, env_name: &str, cmake_name: &str) {
+    println!("cargo:rerun-if-env-changed={env_name}");
+    if let Ok(value) = env::var(env_name) {
+        if !value.is_empty() {
+            dst.define(cmake_name, value);
+        }
+    }
+}
+
 fn profile_to_cmake(p: &str) -> &'static str {
     match p {
         "debug" => "Debug",
@@ -381,8 +410,7 @@ fn profile_to_cmake(p: &str) -> &'static str {
 }
 
 fn detect_cpu_features(dst: &mut Config, cpu: &str) {
-    // Mapping from Rust `target-cpu` values to the GGML compile flags.
-    // This is a simplified subset of the table in llama-cpp-rs/llama-cpp-sys-2/build.rs.
+    // Mapping from Rust `target-cpu` values to GGML compile flags.
     let defines: &[(&str, &[&str])] = &[
         ("x86_64", &[]),
         ("sandybridge", &["GGML_SSE42", "GGML_AVX"]),
@@ -620,6 +648,8 @@ fn emit_link_directives(
             "ggml-base",
             "ggml-blas",
             "ggml-metal",
+            "ggml-vulkan",
+            "ggml-opencl",
             "common",
             "mtmd",
         ] {
@@ -685,6 +715,16 @@ fn emit_link_directives(
             println!("cargo:rustc-link-lib=vulkan-1");
         } else {
             println!("cargo:rustc-link-lib=vulkan");
+        }
+    }
+    if features.opencl {
+        match os {
+            TargetOs::Macos => println!("cargo:rustc-link-lib=framework=OpenCL"),
+            TargetOs::WindowsMsvc => println!("cargo:rustc-link-lib=OpenCL"),
+            TargetOs::WindowsGnu | TargetOs::Linux | TargetOs::Android => {
+                println!("cargo:rustc-link-lib=OpenCL");
+            }
+            TargetOs::Other => {}
         }
     }
 

@@ -26,6 +26,10 @@ when you need parallel throughput.
 | `POST /v1/completions` | `Llama::create_completion_with_options` |
 | `POST /v1/chat/completions` | `Llama::create_chat_completion_stream_with` |
 | `POST /v1/embeddings` | `Llama::embed_texts` |
+| `POST /v1/rerank` | `Llama::rerank` |
+| `POST /v1/reranking` | alias for `/v1/rerank` |
+| `POST /rerank` | alias for `/v1/rerank` |
+| `POST /reranking` | alias for `/v1/rerank` |
 | `POST /extras/tokenize` | `LlamaModel::tokenize` |
 | `POST /extras/tokenize/count` | `LlamaModel::tokenize` |
 | `POST /extras/detokenize` | `LlamaModel::detokenize` |
@@ -75,7 +79,8 @@ cargo run -p llama-crab-server -- \
   --model models/qwen2.5-0.5b-instruct-q4_k_m.gguf \
   --host 127.0.0.1 \
   --port 8080 \
-  --n-ctx 2048
+  --n-ctx 2048 \
+  --mobile-preset balanced
 ```
 
 When the server is ready, a short banner is printed on stderr:
@@ -84,8 +89,8 @@ When the server is ready, a short banner is printed on stderr:
 llama-crab-server listening on http://127.0.0.1:8080
   model : llama-crab
   routes: /health, /v1/models, /v1/completions, /v1/chat/completions,
-          /v1/embeddings, /extras/tokenize, /extras/tokenize/count,
-          /extras/detokenize
+          /v1/embeddings, /v1/rerank, /extras/tokenize,
+          /extras/tokenize/count, /extras/detokenize
   ctrl+c to stop
 ```
 
@@ -94,6 +99,26 @@ event let you confirm the server is up before sending the first
 request. Set `RUST_LOG=debug` (or any other level) before launch to
 override the default `info` filter.
 
+Useful server flags also have `LLAMA_CRAB_*` environment variable equivalents:
+
+| Flag | Environment variable | Purpose |
+| ---- | -------------------- | ------- |
+| `--model` | `LLAMA_CRAB_MODEL` | GGUF model path |
+| `--model-name` | `LLAMA_CRAB_MODEL_NAME` | id returned by `/v1/models` |
+| `--n-ctx` | `LLAMA_CRAB_N_CTX` | context size |
+| `--n-batch` | `LLAMA_CRAB_N_BATCH` | logical batch size |
+| `--n-threads` | `LLAMA_CRAB_N_THREADS` | CPU thread count; `0` keeps the default |
+| `--n-gpu-layers` | `LLAMA_CRAB_N_GPU_LAYERS` | GPU offload layers |
+| `--mobile-preset` | `LLAMA_CRAB_MOBILE_PRESET` | mobile defaults: `low-ram`, `balanced`, or `gpu-max` |
+| `--embeddings` | `LLAMA_CRAB_EMBEDDINGS` | enable embedding mode |
+| `--reranking` | `LLAMA_CRAB_RERANKING` | enable rerank endpoints |
+| `--pooling` | `LLAMA_CRAB_POOLING` | pooling type: `none`, `mean`, `cls`, `last`, `rank`, or `unspecified` |
+| `--mmproj` | `LLAMA_CRAB_MMPROJ` | multimodal projector path |
+
+When `--mobile-preset` is set, `--n-ctx`, `--n-batch`, `--n-threads`, and
+`--n-gpu-layers` override the selected preset only if they are explicitly
+provided. Without a preset, the server keeps its previous defaults.
+
 For embeddings, start the server with `--embeddings` and use an embedding
 model:
 
@@ -101,6 +126,24 @@ model:
 cargo run -p llama-crab-server -- \
   --model models/bge-small-en-v1.5-q4_k_m.gguf \
   --embeddings
+```
+
+For reranking, start the server with `--reranking` and a model loaded with rank
+pooling:
+
+```bash
+cargo run -p llama-crab-server -- \
+  --model models/bge-reranker-base-q4_k_m.gguf \
+  --reranking \
+  --pooling rank
+```
+
+For multimodal chat, build the server with `mtmd` and provide the projector:
+
+```bash
+cargo run -p llama-crab-server --features mtmd -- \
+  --model models/LFM2.5-VL-1.6B-Q4_K_M.gguf \
+  --mmproj models/LFM2.5-VL-1.6B-mmproj-BF16.gguf
 ```
 
 ## Requests
@@ -154,12 +197,57 @@ curl http://127.0.0.1:8080/v1/chat/completions \
   }'
 ```
 
+Multimodal chat accepts OpenAI-style content parts. `image_url.url` currently
+must be a local path or `file://` URL, and the server must be built with
+`--features mtmd` and started with `--mmproj`:
+
+```bash
+curl http://127.0.0.1:8080/v1/chat/completions \
+  -H 'content-type: application/json' \
+  -d '{
+    "messages":[{
+      "role":"user",
+      "content":[
+        {"type":"text","text":"Describe this image in one sentence."},
+        {"type":"image_url","image_url":{"url":"tests/fixtures/test_image.png"}}
+      ]
+    }],
+    "max_tokens":64,
+    "template":"chatml"
+  }'
+```
+
 Embeddings:
 
 ```bash
 curl http://127.0.0.1:8080/v1/embeddings \
   -H 'content-type: application/json' \
   -d '{"input":["Rust is memory-safe.","Paris is in France."],"normalize":true}'
+```
+
+Set `encoding_format` to `base64` to return each embedding as one base64 string
+containing little-endian `f32` bytes:
+
+```bash
+curl http://127.0.0.1:8080/v1/embeddings \
+  -H 'content-type: application/json' \
+  -d '{"input":"Rust","encoding_format":"base64"}'
+```
+
+Rerank:
+
+```bash
+curl http://127.0.0.1:8080/v1/rerank \
+  -H 'content-type: application/json' \
+  -d '{
+    "query":"safe systems programming language",
+    "documents":[
+      "Rust is a memory-safe systems programming language.",
+      "Paris is the capital city of France.",
+      "Bananas are yellow fruit."
+    ],
+    "top_n":2
+  }'
 ```
 
 Tokenizer extras:
@@ -270,9 +358,12 @@ Chat history may include assistant tool calls and tool results:
 }
 ```
 
-For text-only chat, `content` may be a string, `null`, or an array of text
-parts. Image parts belong in multimodal APIs rather than this text generation
-route.
+Chat `content` may be a string, `null`, or an array of content parts. Text
+parts are concatenated in order. `image_url` parts are evaluated with `mtmd`
+when the server is built with the `mtmd` feature and started with `--mmproj`;
+without `--mmproj`, media requests fail before generation. `audio_url` and
+`video_url` parse for request compatibility but are not yet evaluated by the
+server generation path.
 
 `temperature: 0.0` selects greedy decoding. Negative temperature skips the
 probability filters and samples directly from the model distribution. Mirostat

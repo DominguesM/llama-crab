@@ -63,6 +63,12 @@ impl Default for LlamaModelParams {
 }
 
 impl LlamaModelParams {
+    /// Number of layers configured for GPU offload.
+    #[must_use]
+    pub const fn n_gpu_layers(&self) -> i32 {
+        self.n_gpu_layers
+    }
+
     /// Number of layers to offload to the GPU. `-1` offloads every layer.
     #[must_use]
     pub fn with_n_gpu_layers(mut self, n: i32) -> Self {

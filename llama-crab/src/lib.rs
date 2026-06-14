@@ -61,7 +61,7 @@ pub use crate::high_level::completion::{
     TokenLogprob,
 };
 pub use crate::high_level::tokenizer::{FimTokens, LlamaTokenizer, Tokenizer};
-pub use crate::high_level::{Llama, LlamaParams};
+pub use crate::high_level::{Llama, LlamaParams, MobilePreset};
 pub use crate::log::{send_logs_to_tracing, LogOptions};
 pub use crate::logit_bias::LlamaLogitBias;
 pub use crate::model::{params::LlamaModelParams, LlamaModel};

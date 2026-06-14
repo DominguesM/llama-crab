@@ -2,12 +2,9 @@
 
 A thin wrapper that starts the `llama-crab-server` HTTP binary pre-wired
 for the [Liquid AI LFM2.5-VL 1.6B](https://huggingface.co/unsloth/LFM2.5-VL-1.6B-GGUF)
-text GGUF (`Q4_K_M` quantization, ~1 GB).
-
-The model itself is a vision-language model; the wrapper currently only
-loads the text side because the server is text-only in this version of
-the binding. The projector file is downloaded for completeness so future
-server multimodal routes can pick it up without an extra fetch.
+text GGUF (`Q4_K_M` quantization, ~1 GB). The wrapper can also pass the paired
+`mmproj` projector and build `llama-crab-server` with `mtmd` for multimodal
+HTTP chat.
 
 ## Run it
 
@@ -16,9 +13,14 @@ server multimodal routes can pick it up without an extra fetch.
 ```
 
 `run.sh` resolves the `lfm-vl` download target (idempotent — skips files
-already in `./models/`), then runs this wrapper with the model path
-followed by `--host 127.0.0.1 --port 8080 --n-ctx 2048`. The first run
-also builds `llama-crab-server` in `--release`.
+already in `./models/`), then runs this wrapper with the model path. The first
+run also builds `llama-crab-server` in `--release`.
+
+For multimodal HTTP chat, use the dedicated target:
+
+```bash
+./examples/run.sh multimodal_http
+```
 
 Override any default with positional arguments:
 
@@ -41,13 +43,14 @@ listening on http://127.0.0.1:8080
 | `POST /v1/completions`           | text completion (supports `stream: true`)       |
 | `POST /v1/chat/completions`      | chat completion (supports `stream: true`)       |
 | `POST /v1/embeddings`            | embeddings (only when started with `--embeddings`) |
+| `POST /v1/rerank`                | reranking (only when started with `--reranking`) |
 | `POST /extras/tokenize`          | text → token ids                                |
 | `POST /extras/tokenize/count`    | text → token count                              |
 | `POST /extras/detokenize`        | token ids → text                                |
 
 Full parameter reference lives in [`docs/src/server.md`](../../docs/src/server.md).
 
-## Text-only call examples
+## Call examples
 
 ### Health check
 
@@ -169,6 +172,27 @@ curl -sN http://127.0.0.1:8080/v1/chat/completions \
       }
     }],
     "tool_choice": {"type": "function", "function": {"name": "get_weather"}}
+  }' | jq
+```
+
+### Multimodal chat
+
+Start the server with `./examples/run.sh multimodal_http`, then send a local
+image path through an `image_url` content part:
+
+```bash
+curl -sN http://127.0.0.1:8080/v1/chat/completions \
+  -H 'content-type: application/json' \
+  -d '{
+    "messages": [{
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "Describe this image in one sentence."},
+        {"type": "image_url", "image_url": {"url": "tests/fixtures/test_image.png"}}
+      ]
+    }],
+    "template": "chatml",
+    "max_tokens": 64
   }' | jq
 ```
 

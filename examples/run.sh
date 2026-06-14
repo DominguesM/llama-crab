@@ -10,6 +10,8 @@
 #   ./examples/run.sh lfm_vl               # REPL against the LFM VL model
 #   ./examples/run.sh server_lfm           # boots llama-crab-server w/ LFM
 #   ./examples/run.sh embeddings           # downloads BGE-small
+#   ./examples/run.sh rerank               # boots server with a reranker
+#   ./examples/run.sh multimodal_http      # boots mtmd-enabled server w/ LFM
 #   ./examples/run.sh tools                # function-calling example
 #
 # Without any arguments, lists the available examples.
@@ -26,6 +28,7 @@ cd "$ROOT"
 
 SMOL_MODEL="models/qwen2.5-0.5b-instruct-q4_k_m.gguf"
 BGE_MODEL="models/bge-small-en-v1.5-q4_k_m.gguf"
+RERANK_MODEL="models/bge-reranker-base-q4_k_m.gguf"
 GEMMA4_MODEL="models/gemma-4-E4B-it-Q4_K_M.gguf"
 GEMMA4_MMPROJ="models/mmproj-gemma-4-E4B-it-BF16.gguf"
 LFM_MODEL="models/LFM2.5-VL-1.6B-Q4_K_M.gguf"
@@ -43,14 +46,17 @@ example_target_bin() {
     simple)            echo "smol|simple" ;;
     structured)        echo "smol|structured" ;;
     tools)             echo "smol|tools" ;;
+    tool_calls_qwen)   echo "smol|tools" ;;
     embeddings)        echo "bge|embeddings" ;;
     embedding_search)  echo "bge|run_embeddings" ;;
+    rerank)            echo "bge-reranker|__server_rerank" ;;
     reranker)          echo "bge|reranker" ;;
     speculative)       echo "smol|speculative" ;;
     vision)            echo "vision_model|vision" ;;
     mtmd)              echo "vision_model|mtmd" ;;
     lfm_vl)            echo "lfm-vl|run_lfm_vl" ;;
     server_lfm)        echo "lfm-text|run_server_lfm" ;;
+    multimodal_http)   echo "lfm-vl|__server_multimodal" ;;
     *) return 1 ;;
   esac
 }
@@ -78,8 +84,8 @@ if [[ $# -lt 1 ]]; then
   echo >&2
   echo "Available examples:" >&2
   for ex in quickstart streaming chat stateful_chat simple structured tools \
-            embeddings embedding_search reranker speculative vision mtmd lfm_vl \
-            server_lfm; do
+            tool_calls_qwen embeddings embedding_search rerank reranker \
+            speculative vision mtmd lfm_vl server_lfm multimodal_http; do
     printf "  %-18s  (downloads + runs the binary)\n" "$ex" >&2
   done
   echo >&2
@@ -93,8 +99,8 @@ shift
 if ! mapping="$(example_target_bin "$example")"; then
   echo "unknown example: $example" >&2
   echo "available: quickstart, streaming, chat, stateful_chat, simple, structured, tools," >&2
-  echo "           embeddings, embedding_search, reranker, speculative," >&2
-  echo "           vision, mtmd, lfm_vl, server_lfm" >&2
+  echo "           tool_calls_qwen, embeddings, embedding_search, rerank, reranker," >&2
+  echo "           speculative, vision, mtmd, lfm_vl, server_lfm, multimodal_http" >&2
   exit 2
 fi
 
@@ -117,6 +123,7 @@ else
   case "$target" in
     smol) model_args=("$SMOL_MODEL") ;;
     bge)  model_args=("$BGE_MODEL") ;;
+    bge-reranker) model_args=("$RERANK_MODEL") ;;
     lfm-vl) model_args=("$LFM_MODEL" "$LFM_MMPROJ" "$TEST_IMAGE") ;;
     lfm-text) model_args=("$LFM_MODEL") ;;
     none) model_args=() ;;
@@ -131,7 +138,19 @@ else
 fi
 
 echo
-cmd=(cargo run --release --bin "$bin" -- "${model_args[@]}" "$@")
+case "$bin" in
+  __server_rerank)
+    if [[ "${1:-}" == "--" ]]; then shift; fi
+    cmd=(cargo run --release -p llama-crab-server -- --model "$RERANK_MODEL" --reranking --pooling rank "$@")
+    ;;
+  __server_multimodal)
+    if [[ "${1:-}" == "--" ]]; then shift; fi
+    cmd=(cargo run --release -p llama-crab-server --features mtmd -- --model "$LFM_MODEL" --mmproj "$LFM_MMPROJ" "$@")
+    ;;
+  *)
+    cmd=(cargo run --release --bin "$bin" -- "${model_args[@]}" "$@")
+    ;;
+esac
 echo "==> running: ${cmd[*]}"
 if [[ "${LLAMA_CRAB_DRY_RUN:-0}" == "1" ]]; then
   exit 0

@@ -7,6 +7,8 @@
 #   ./scripts/download_models.sh gemma4                 # Gemma 4 text + mmproj (~5 GB)
 #   ./scripts/download_models.sh lfm-vl                # LFM2.5-VL text + mmproj (~2 GB)
 #   ./scripts/download_models.sh lfm-text              # LFM2.5-VL text only (~1 GB)
+#   ./scripts/download_models.sh bge                    # embedding model (~25 MB)
+#   ./scripts/download_models.sh bge-reranker           # cross-encoder rerank (~220 MB)
 #   ./scripts/download_models.sh test-image             # the synthetic PNG fixture
 #
 # Models land in `./models/` (the conventional path the examples look at).
@@ -197,6 +199,14 @@ bge_small() {
     "$MODELS_DIR/bge-small-en-v1.5-q4_k_m.gguf"
 }
 
+# Cross-encoder rerank model used by /v1/rerank (BGE-reranker-base Q4_K_M).
+# BERT encoder-only architecture; requires pooling_type = Rank.
+bge_reranker() {
+  local repo="turingevo/bge-reranker-base-Q4_K_M-GGUF"
+  download_hf "$repo" "bge-reranker-base-q4_k_m.gguf" \
+    "$MODELS_DIR/bge-reranker-base-q4_k_m.gguf"
+}
+
 # ---- dispatch -------------------------------------------------------------
 
 target="${1:-all}"
@@ -206,6 +216,7 @@ case "$target" in
   lfm-vl|lfmvl) lfm_vl ;;
   lfm-text)     lfm_text ;;
   bge)          bge_small ;;
+  bge-reranker) bge_reranker ;;
   test-image)   test_image ;;
   all)
     smol
@@ -213,11 +224,12 @@ case "$target" in
     lfm_vl
     lfm_text
     bge_small
+    bge_reranker
     test_image
     ;;
   *)
     echo "unknown target: $target" >&2
-    echo "valid targets: smol, gemma4, lfm-vl, lfm-text, bge, test-image, all" >&2
+    echo "valid targets: smol, gemma4, lfm-vl, lfm-text, bge, bge-reranker, test-image, all" >&2
     exit 2
     ;;
 esac

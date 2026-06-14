@@ -7,6 +7,7 @@ mod inner {
 
     /// Bridge between the HuggingFace `tokenizers` crate and the
     /// llama.cpp token vocabulary of a loaded [`crate::model::LlamaModel`].
+    #[derive(Debug)]
     pub struct HfTokenizer {
         inner: tokenizers::Tokenizer,
     }

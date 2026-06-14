@@ -421,6 +421,8 @@ pub enum StopReason {
     Eos,
     /// Custom stop string matched.
     Stop,
+    /// Model emitted one or more tool calls (streaming consumers only).
+    ToolCalls,
 }
 
 /// Return value from synchronous streaming callbacks.

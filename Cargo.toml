@@ -81,6 +81,24 @@ opt-level = 3
 debug = false
 strip = "debuginfo"
 
+[profile.release-perf]
+inherits = "release"
+lto = "thin"
+codegen-units = 1
+opt-level = 3
+debug = false
+strip = "debuginfo"
+
+[profile.release-size]
+inherits = "release"
+opt-level = "s"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+debug = false
+incremental = false
+
 [profile.dev]
 opt-level = 0
 debug = true

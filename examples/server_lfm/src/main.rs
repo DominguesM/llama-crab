@@ -17,6 +17,7 @@
 //! ```bash
 //! cargo run --release --bin run_server_lfm -- \
 //!   models/LFM2.5-VL-1.6B-Q4_K_M.gguf \
+//!   models/LFM2.5-VL-1.6B-mmproj-BF16.gguf \
 //!   --host 127.0.0.1 \
 //!   --port 8080 \
 //!   --n-ctx 2048
@@ -33,16 +34,40 @@ fn main() -> ExitCode {
     let model = match args.next() {
         Some(m) => m,
         None => {
-            eprintln!("usage: run_server_lfm <model.gguf> [-- extra llama-crab-server args...]");
+            eprintln!(
+                "usage: run_server_lfm <model.gguf> [mmproj.gguf] [-- extra llama-crab-server args...]"
+            );
             return ExitCode::from(2);
         }
     };
 
-    let mut cmd = Command::new("cargo");
-    cmd.args(["run", "--release", "-p", "llama-crab-server", "--"])
-        .arg("--model")
-        .arg(&model);
+    let mut mmproj = None;
+    let mut forwarded = Vec::new();
+    if let Some(arg) = args.next() {
+        if arg == "--" {
+            // Separator used by examples/run.sh; do not forward it to clap.
+        } else if !arg.starts_with("--") {
+            mmproj = Some(arg);
+        } else {
+            forwarded.push(arg);
+        }
+    }
     for arg in args {
+        if arg != "--" {
+            forwarded.push(arg);
+        }
+    }
+
+    let mut cmd = Command::new("cargo");
+    cmd.args(["run", "--release", "-p", "llama-crab-server"]);
+    if mmproj.is_some() {
+        cmd.args(["--features", "mtmd"]);
+    }
+    cmd.arg("--").arg("--model").arg(&model);
+    if let Some(mmproj) = mmproj {
+        cmd.arg("--mmproj").arg(mmproj);
+    }
+    for arg in forwarded {
         cmd.arg(arg);
     }
 

@@ -15,6 +15,8 @@ offloading a chosen number of transformer layers to the GPU.
 | NVIDIA CUDA (no VMM) | `cuda-no-vmm`       | –                         |
 | Vulkan / SPIR-V      | `vulkan`            | –                         |
 | AMD ROCm/HIP         | `rocm`              | –                         |
+| OpenCL               | `opencl`            | –                         |
+| KleidiAI CPU kernels | `kleidiai`          | –                         |
 | Dynamic linking      | `dynamic-link`      | –                         |
 | System GGML          | `system-ggml`       | –                         |
 | Dynamic backends     | `dynamic-backends`  | –                         |
@@ -89,6 +91,40 @@ let llama = Llama::load(
 ```
 
 A reasonable starting point is the number of physical cores.
+
+## Mobile builds
+
+Mobile builds use the same Cargo features as desktop builds. Common starting
+points are:
+
+```bash
+cargo build --profile release-size --no-default-features --features openmp,kleidiai
+cargo build --profile release-perf --no-default-features --features metal
+cargo build --profile release-perf --no-default-features --features opencl,shared-stdcxx
+```
+
+For Android OpenCL, install OpenCL headers and an ICD loader into the NDK
+sysroot or provide the standard CMake discovery variables. `OpenCL_LIBRARY`,
+`OPENCL_HEADERS_DIR`, and `OPENCL_ICD_LOADER_HEADERS_DIR` are forwarded by the
+build script when present. `shared-stdcxx` selects `ANDROID_STL=c++_shared`;
+`static-stdcxx` selects `ANDROID_STL=c++_static`. If neither feature is set,
+Android keeps the previous `c++_static` default.
+
+The high-level API also provides mobile parameter presets:
+
+```rust,no_run
+use llama_crab::{Llama, LlamaParams, MobilePreset};
+
+let llama = Llama::load(
+    LlamaParams::new("model.gguf")
+        .with_mobile_preset(MobilePreset::Balanced)
+        .with_n_ctx(2048),
+)?;
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+Call explicit setters after `with_mobile_preset` when you need to override an
+individual value.
 
 ## Flash attention
 

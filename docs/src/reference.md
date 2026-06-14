@@ -29,6 +29,8 @@ llama-crab/
 | NVIDIA CUDA    | `cuda`    | – |
 | Vulkan         | `vulkan`  | – |
 | AMD ROCm/HIP   | `rocm`    | – |
+| OpenCL         | `opencl`  | – |
+| KleidiAI       | `kleidiai`| – |
 
 ## Cargo features
 
@@ -39,6 +41,8 @@ llama-crab/
 | `cuda-no-vmm`     | CUDA without Virtual Memory Management            |
 | `vulkan`          | Vulkan / SPIR-V backend                           |
 | `rocm`            | AMD ROCm/HIP backend                              |
+| `opencl`          | OpenCL backend                                    |
+| `kleidiai`        | KleidiAI CPU kernels                              |
 | `mtmd`            | Vision + audio (multimodal) support               |
 | `llguidance`      | `llguidance` grammar sampler                      |
 | `hf-tokenizer`    | HuggingFace `tokenizers` integration              |
@@ -46,6 +50,8 @@ llama-crab/
 | `dynamic-link`    | Link llama.cpp as a shared object                  |
 | `dynamic-backends`| Load GGML backends as shared objects              |
 | `system-ggml`     | Use the system GGML instead of the bundled copy   |
+| `shared-stdcxx`   | Use Android `c++_shared`                          |
+| `static-stdcxx`   | Use Android `c++_static`                          |
 
 ## MSRV
 

@@ -8,6 +8,7 @@
 
 - [Getting started](./getting-started.md)
 - [Backends & GPU offload](./backends.md)
+- [Mobile distribution](./mobile.md)
 - [Sampling guide](./sampling.md)
 - [Chat & tool calling](./chat.md)
 - [Multimodal (vision + audio)](./multimodal.md)

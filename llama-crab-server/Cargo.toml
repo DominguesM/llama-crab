@@ -16,9 +16,14 @@ path = "src/main.rs"
 [lints]
 workspace = true
 
+[features]
+default = []
+mtmd = ["llama-crab/mtmd"]
+
 [dependencies]
 llama-crab = { path = "../llama-crab", version = "0.1.300", features = ["common"] }
 axum = "0.7"
+base64 = "0.22"
 clap = { version = "4", features = ["derive", "env"] }
 futures-util = "0.3"
 serde = { version = "1", features = ["derive"] }

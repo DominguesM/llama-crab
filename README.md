@@ -29,7 +29,7 @@ Safe, ergonomic Rust bindings for [`llama.cpp`](https://github.com/ggml-org/llam
 - Chat templates and tool-call parsing helpers.
 - Embeddings, reranking, manual prompt/session cache APIs and speculative decoding.
 - Multimodal support through `mtmd` for vision and audio capable GGUF models.
-- Hardware backends for CPU, Metal, CUDA, Vulkan and ROCm through Cargo features.
+- Hardware backends for CPU, Metal, CUDA, Vulkan, ROCm, OpenCL and KleidiAI through Cargo features.
 
 Documentation is available at [docs.rs/llama-crab](https://docs.rs/llama-crab) and in the [mdBook user guide](docs/src/SUMMARY.md).
 
@@ -54,7 +54,14 @@ The crate builds the bundled `llama.cpp` sources through CMake. You need:
 - Rust 1.88 or newer.
 - CMake 3.18 or newer.
 - A C and C++ compiler supported by `llama.cpp`.
-- A platform SDK when using GPU backends such as Metal, CUDA, Vulkan or ROCm.
+- A platform SDK when using GPU backends such as Metal, CUDA, Vulkan, ROCm or OpenCL.
+
+The workspace also provides packaging-oriented release profiles:
+
+```bash
+cargo build --profile release-perf
+cargo build --profile release-size
+```
 
 ## Cargo Features
 
@@ -66,6 +73,8 @@ The crate builds the bundled `llama.cpp` sources through CMake. You need:
 | `cuda-no-vmm`      | CUDA backend without virtual memory management.                     |
 | `vulkan`           | Vulkan backend.                                                     |
 | `rocm`             | AMD ROCm/HIP backend.                                               |
+| `opencl`           | OpenCL backend, primarily for Android Adreno and Arm64 devices.     |
+| `kleidiai`         | KleidiAI CPU kernels for Arm mobile targets.                        |
 | `mtmd`             | Multimodal support through `mtmd.h`; enables image/audio helpers.   |
 | `common`           | Builds llama.cpp common utilities used by chat and grammar helpers. |
 | `llguidance`       | Enables the llguidance sampler integration.                         |
@@ -74,6 +83,10 @@ The crate builds the bundled `llama.cpp` sources through CMake. You need:
 | `dynamic-link`     | Links llama.cpp as a shared object.                                 |
 | `dynamic-backends` | Loads GGML backends dynamically.                                    |
 | `system-ggml`      | Uses a system GGML installation instead of the bundled copy.        |
+| `shared-stdcxx`    | Uses `c++_shared` for Android builds.                               |
+| `static-stdcxx`    | Uses `c++_static` for Android builds.                               |
+
+For mobile packaging details, see [Mobile distribution](docs/src/mobile.md).
 
 ## Basic Usage
 
@@ -94,6 +107,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+```
+
+For mobile targets, use `MobilePreset` as a starting point and override the
+fields you need:
+
+```rust,no_run
+use llama_crab::{Llama, LlamaParams, MobilePreset};
+
+let mut llama = Llama::load(
+    LlamaParams::new("models/model.gguf")
+        .with_mobile_preset(MobilePreset::Balanced)
+        .with_n_ctx(2048),
+)?;
+# Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
 ## Chat Completion
@@ -234,8 +261,8 @@ cargo run -p llama-crab-server -- \
 ```
 
 Available routes include `/health`, `/v1/models`, `/v1/completions`,
-`/v1/chat/completions`, `/v1/embeddings`, `/extras/tokenize`,
-`/extras/tokenize/count`, and `/extras/detokenize`. Set `"stream": true` on
+`/v1/chat/completions`, `/v1/embeddings`, `/v1/rerank`, `/v1/reranking`,
+`/extras/tokenize`, `/extras/tokenize/count`, and `/extras/detokenize`. Set `"stream": true` on
 completion or chat requests to receive server-sent events. Completion and chat
 requests accept sampling fields such as `temperature`, `top_k`, `top_p`,
 `tfs_z`, `min_p`, penalties, Mirostat settings, `seed`, `min_tokens`, `n`,
@@ -243,8 +270,10 @@ requests accept sampling fields such as `temperature`, `top_k`, `top_p`,
 `top_logprobs`, `template`, `tools`, `tool_choice`, and `function_call`;
 structured generation can use `grammar`, `json_schema`, or
 `response_format`, and text completions support `echo`, `suffix`, and
-`best_of`. Generation, embedding, and tokenizer requests may include `model`;
-the bundled binary serves the model loaded at startup. See
+`best_of`. Embeddings support `encoding_format: "float"` or `"base64"`.
+Multimodal chat is available when the server is built with `--features mtmd`
+and started with `--mmproj`. Generation, embedding, rerank, and tokenizer
+requests may include `model`; the bundled binary serves the model loaded at startup. See
 [Server](docs/src/server.md) for request examples.
 
 ## Examples
@@ -257,11 +286,14 @@ The repository contains runnable example crates under [`examples/`](examples/REA
 ./examples/run.sh stateful_chat
 ./examples/run.sh embeddings
 ./examples/run.sh embedding_search
+./examples/run.sh rerank
 ./examples/run.sh reranker
 ./examples/run.sh vision gemma4
 ./examples/run.sh vision lfm-vl
 ./examples/run.sh mtmd gemma4
 ./examples/run.sh tools
+./examples/run.sh tool_calls_qwen
+./examples/run.sh multimodal_http
 ./examples/run.sh structured
 ./examples/run.sh speculative
 ./examples/run.sh streaming
@@ -318,5 +350,3 @@ Licensed under the MIT License. See [LICENSE-MIT](LICENSE-MIT).
 ## Acknowledgements
 
 `llama-crab` builds on [`llama.cpp`](https://github.com/ggml-org/llama.cpp).
-
-Inspired by [`llama-cpp-rs`](https://github.com/utilityai/llama-cpp-rs).
