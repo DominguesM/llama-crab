@@ -24,26 +24,29 @@ let grammar = json_schema_grammar(&schema).unwrap();
 ```
 
 Then plug the grammar into a sampler. Grammar enforcement is a sampler
-stage like any other (gated by the `common` cargo feature) and should
-be the **last** stage of the chain, since it constrains the candidate
-set:
+stage like any other and is available with the `common` cargo feature:
 
 ```rust,no_run
 # #[cfg(feature = "common")] {
-# use llama_crab::high_level::completion::json_schema_grammar;
+# use llama_crab::high_level::completion::{json_schema_grammar, CompletionOptions};
 # use llama_crab::sampling::LlamaSampler;
 # use llama_crab::{Llama, LlamaParams};
 # use serde_json::json;
 # let schema = json!({"type":"object"});
 # let grammar = json_schema_grammar(&schema)?;
-# let llama = Llama::load(LlamaParams::new("model.gguf"))?;
+# let mut llama = Llama::load(LlamaParams::new("model.gguf"))?;
 
-// Build a chain: temperature → top-p → grammar (must be last).
-let temp    = LlamaSampler::temp(0.8)?;
-let top_p   = LlamaSampler::top_p(0.95, 1)?;
 let grammar = unsafe { LlamaSampler::grammar(llama.model(), &grammar, "root")? };
-let sampler = LlamaSampler::chain(vec![temp, top_p, grammar], false)?;
-# let _ = sampler;
+let greedy = LlamaSampler::greedy()
+    .ok_or_else(|| std::io::Error::other("failed to create greedy sampler"))?;
+let mut sampler = LlamaSampler::chain(vec![grammar, greedy], false)
+    .ok_or_else(|| std::io::Error::other("failed to create sampler chain"))?;
+let completion = llama.create_completion_with_sampler(
+    "Return one object: ",
+    CompletionOptions::new(64),
+    &mut sampler,
+)?;
+# let _ = completion;
 # }
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```

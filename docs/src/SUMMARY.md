@@ -16,6 +16,7 @@
 - [Speculative decoding](./speculative.md)
 - [Caching & session state](./caching.md)
 - [Stateful chat](./stateful_chat.md)
+- [Server](./server.md)
 - [Reference](./reference.md)
 - [Troubleshooting / FAQ](./troubleshooting.md)
 

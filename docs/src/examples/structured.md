@@ -5,6 +5,7 @@ emit only valid JSON of a specific shape.
 
 ```rust,no_run
 use llama_crab::high_level::completion::json_schema_grammar;
+use llama_crab::high_level::completion::CompletionOptions;
 use llama_crab::sampling::{LlamaSampler, SamplerChain};
 use llama_crab::{Llama, LlamaParams};
 use serde_json::json;
@@ -18,13 +19,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
         "required": ["name", "age"]
     });
-    let _grammar = json_schema_grammar(&schema).unwrap();
-    // In v0.2 the grammar is fed to a grammar sampler (gated by
-    // `common` feature). For v0.1 the JSON is parsed post-hoc.
+    let grammar_text = json_schema_grammar(&schema).unwrap();
     let mut llama = Llama::load(LlamaParams::new("model.gguf").with_n_ctx(1024))?;
-    let resp = llama.create_completion(
+    let grammar = unsafe { LlamaSampler::grammar(llama.model(), &grammar_text, "root")? };
+    let greedy = LlamaSampler::greedy()
+        .ok_or_else(|| std::io::Error::other("failed to create greedy sampler"))?;
+    let mut sampler = LlamaSampler::chain(vec![grammar, greedy], false)
+        .ok_or_else(|| std::io::Error::other("failed to create sampler chain"))?;
+    let resp = llama.create_completion_with_sampler(
         "Generate a fictional person as JSON: ",
-        32,
+        CompletionOptions::new(32),
+        &mut sampler,
     )?;
     println!("{}", resp.text);
     Ok(())
@@ -34,7 +39,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 Run with:
 
 ```bash
-cargo run --bin structured --release -- model.gguf
+cargo run -p structured --release -- model.gguf
 ```
 
 ## Expected output

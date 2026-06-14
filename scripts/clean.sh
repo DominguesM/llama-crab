@@ -14,7 +14,7 @@
 # registry cache, which cargo will re-download next build).
 #
 # The script always asks for confirmation before deleting anything.
-# Compatible with bash 3.2 (the version Apple ships in /bin/bash).
+# Written for bash 3.2, the version Apple ships in /bin/bash.
 
 set -euo pipefail
 
@@ -51,7 +51,7 @@ fi
 
 # Sum the on-disk size of every path that would be removed.  Uses
 # du -sk because both BSD and GNU du accept it.  Paths are passed as
-# positional args so the function is compatible with bash 3.2.
+# positional args so the function works on bash 3.2.
 sum_paths() {
   local total=0
   local p

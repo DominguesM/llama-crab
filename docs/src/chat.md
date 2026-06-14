@@ -48,7 +48,8 @@ let tpl = detect_chat_format(&md);
 Define a tool and pass it to the renderer:
 
 ```rust,no_run
-use llama_crab::chat::{ToolDefinition, ToolParser, ToolFormat, extract_tool_calls};
+use llama_crab::chat::tool_call::{extract_tool_calls, ToolFormat};
+use llama_crab::chat::{ToolDefinition, ToolParser};
 use serde_json::json;
 
 let tool = ToolDefinition::new("get_weather", "Get the weather for a city")

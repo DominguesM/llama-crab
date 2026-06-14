@@ -11,7 +11,7 @@ crates:
 
 `llama-crab` is built with three goals in mind:
 
-1. **Ergonomics** — a high-level [`Llama`](https://docs.rs/llama-crab/latest/llama_crab/struct.Llama.html) orchestrator that mirrors the surface of `llama-cpp-python`'s `Llama` class, but stays 100% safe Rust and uses idiomatic builders.
+1. **Ergonomics** — a high-level [`Llama`](https://docs.rs/llama-crab/latest/llama_crab/struct.Llama.html) orchestrator that stays 100% safe Rust and uses idiomatic builders.
 2. **Completeness** — every sampling strategy, every chat format and every modern llama.cpp feature is exposed, including `mtmd`-based vision and `llguidance` grammars.
 3. **No surprises** — `SemVer` is honored, the build is reproducible (llama.cpp is pinned to a release tag) and CI runs on a matrix of CPU/CUDA/Vulkan/Metal/ROCm combinations.
 

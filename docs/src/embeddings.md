@@ -79,12 +79,28 @@ Rerankers (a.k.a. cross-encoders) score `(query, document)` pairs
 **jointly** rather than from independent embeddings. They give better
 rankings at the cost of one model pass per pair.
 
-`llama-crab` does not yet ship a dedicated `rerank()` helper, but you
-can drive it the same way as `embed()`: feed `"{query} [SEP] {doc}"`
-to an encoder GGUF with embeddings enabled, take the first component
-of the pooled vector as the relevance score, and rank by it. The
-[`reranker`](./examples/reranker.md) example shows a simplified
-bi-encoder ranking you can adapt.
+`llama-crab` includes `Llama::rerank(query, documents)` for cross-encoder
+rank models. Load the model with embeddings enabled and `PoolingType::Rank`,
+then pass the query and documents:
+
+```rust,no_run
+# use llama_crab::context::params::PoolingType;
+# use llama_crab::{Llama, LlamaParams};
+# let mut llama = Llama::load(
+#     LlamaParams::new("reranker.gguf")
+#         .with_embeddings(true)
+#         .with_pooling_type(PoolingType::Rank)
+# )?;
+let scores = llama.rerank("safe systems programming", &[
+    "Rust prevents many memory bugs.",
+    "Paris is the capital of France.",
+])?;
+# let _ = scores;
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+The helper currently encodes each `(query, document)` pair independently.
+Use the lower-level batch and sequence APIs when you need higher throughput.
 
 ## Where to next?
 

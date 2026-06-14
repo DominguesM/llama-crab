@@ -17,7 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "required": ["city"]
         }));
     let prompt = render_builtin(
-        BuiltinTemplate::Qwen2_5,  // or any chatml-compatible template
+        BuiltinTemplate::Qwen2_5,
         &[ChatMessage::new(Role::User, "Weather in Tokyo?")],
         &[tool.clone()],
         true,

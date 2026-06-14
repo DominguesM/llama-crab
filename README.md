@@ -26,7 +26,7 @@ Safe, ergonomic Rust bindings for [`llama.cpp`](https://github.com/ggml-org/llam
 - Low-level FFI bindings to `llama.cpp`, `ggml`, `gguf` and `mtmd` through `llama-crab-sys`.
 - A safe high-level Rust API for model loading, text completion, chat completion and infill.
 - Sampling chains, grammar-constrained decoding and JSON-Schema to GBNF conversion.
-- Chat templates, tool-call parsing and OpenAI-compatible data structures.
+- Chat templates and tool-call parsing helpers.
 - Embeddings, reranking, manual prompt/session cache APIs and speculative decoding.
 - Multimodal support through `mtmd` for vision and audio capable GGUF models.
 - Hardware backends for CPU, Metal, CUDA, Vulkan and ROCm through Cargo features.
@@ -221,6 +221,32 @@ each call; use lower-level context/session APIs if you need manual KV
 reuse. The [`streaming`](docs/src/examples/streaming.md) example shows
 the callback loop.
 
+## Server
+
+`llama-crab-server` exposes the high-level API over HTTP with a worker
+thread that owns the model and context.
+
+```bash
+cargo run -p llama-crab-server -- \
+  --model models/qwen2.5-0.5b-instruct-q4_k_m.gguf \
+  --host 127.0.0.1 \
+  --port 8080
+```
+
+Available routes include `/health`, `/v1/models`, `/v1/completions`,
+`/v1/chat/completions`, `/v1/embeddings`, `/extras/tokenize`,
+`/extras/tokenize/count`, and `/extras/detokenize`. Set `"stream": true` on
+completion or chat requests to receive server-sent events. Completion and chat
+requests accept sampling fields such as `temperature`, `top_k`, `top_p`,
+`tfs_z`, `min_p`, penalties, Mirostat settings, `seed`, `min_tokens`, `n`,
+`logprobs`, `logit_bias`, and `logit_bias_type`; chat requests also accept
+`top_logprobs`, `template`, `tools`, `tool_choice`, and `function_call`;
+structured generation can use `grammar`, `json_schema`, or
+`response_format`, and text completions support `echo`, `suffix`, and
+`best_of`. Generation, embedding, and tokenizer requests may include `model`;
+the bundled binary serves the model loaded at startup. See
+[Server](docs/src/server.md) for request examples.
+
 ## Examples
 
 The repository contains runnable example crates under [`examples/`](examples/README.md). The helper script downloads known-good GGUF fixtures on first run.
@@ -293,4 +319,4 @@ Licensed under the MIT License. See [LICENSE-MIT](LICENSE-MIT).
 
 `llama-crab` builds on [`llama.cpp`](https://github.com/ggml-org/llama.cpp).
 
-Inspired by [`llama-cpp-rs`](https://github.com/utilityai/llama-cpp-rs) and the feature completeness of [`llama-cpp-python`](https://github.com/abetlen/llama-cpp-python).
+Inspired by [`llama-cpp-rs`](https://github.com/utilityai/llama-cpp-rs).
