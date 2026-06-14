@@ -31,7 +31,7 @@ Safe, ergonomic Rust bindings for [`llama.cpp`](https://github.com/ggml-org/llam
 - Multimodal support through `mtmd` for vision and audio capable GGUF models.
 - Hardware backends for CPU, Metal, CUDA, Vulkan, ROCm, OpenCL and KleidiAI through Cargo features.
 
-Documentation is available at [docs.rs/llama-crab](https://docs.rs/llama-crab) and in the [Material for MkDocs user guide](https://DominguesM.github.io/llama-crab/) (source in [`docs/`](docs/README.md)). The guide is available in English and Portuguese.
+Documentation is available at [docs.rs/llama-crab](https://docs.rs/llama-crab) and in the [Material for MkDocs user guide](https://dominguesm.github.io/llama-crab.github.io/) (source in [`docs/`](docs/README.md)). The guide is available in English and Portuguese.
 
 ## Installation
 
@@ -86,7 +86,7 @@ cargo build --profile release-size
 | `shared-stdcxx`    | Uses `c++_shared` for Android builds.                               |
 | `static-stdcxx`    | Uses `c++_static` for Android builds.                               |
 
-For mobile packaging details, see [Mobile distribution](docs/src/mobile.md).
+For mobile packaging details, see [Mobile distribution](docs/en/guides/mobile.md).
 
 ## Basic Usage
 
@@ -175,7 +175,7 @@ let grammar = json_schema_grammar(&schema)?;
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-See the [`structured`](docs/src/examples/structured.md) example for a complete program.
+See the [`structured`](docs/en/examples/structured.md) example for a complete program.
 
 ## Tool Calling
 
@@ -190,7 +190,7 @@ let calls = parser.feed("<tool_call>{\"name\":\"get_weather\",\"arguments\":{\"c
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-See [Chat & tool calling](docs/src/chat.md) for supported formats and parser behavior.
+See [Chat & tool calling](docs/en/features/chat.md) for supported formats and parser behavior.
 
 ## Embeddings and Reranking
 
@@ -213,7 +213,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-See [Embeddings & reranking](docs/src/embeddings.md), [`embeddings`](docs/src/examples/embeddings.md) and [`embedding_search`](docs/src/examples/embedding_search.md).
+See [Embeddings & reranking](docs/en/features/embeddings.md), [`embeddings`](docs/en/examples/embeddings.md) and [`embedding_search`](docs/en/examples/embedding-search.md).
 
 ## Multimodal Models
 
@@ -231,13 +231,13 @@ Supported workflows include:
 - Tokenizing text and media together with `MtmdContext`.
 - Evaluating multimodal chunks and continuing generation with normal samplers.
 
-See [Multimodal](docs/src/multimodal.md), [`vision`](docs/src/examples/vision.md), [`mtmd`](docs/src/examples/mtmd.md), and the integration tests under [`llama-crab/tests`](llama-crab/tests).
+See [Multimodal](docs/en/features/multimodal.md), [`vision`](docs/en/examples/vision.md), [`mtmd`](docs/en/examples/mtmd.md), and the integration tests under [`llama-crab/tests`](llama-crab/tests).
 
 ## Speculative Decoding
 
 Prompt-lookup speculative decoding is available through the `speculative` module. It can draft candidate tokens from repeated n-grams in the prompt and verify them with the main model.
 
-See [Speculative decoding](docs/src/speculative.md) and the [`speculative`](docs/src/examples/speculative.md) example.
+See [Speculative decoding](docs/en/features/speculative.md) and the [`speculative`](docs/en/examples/speculative.md) example.
 
 ## Streaming
 
@@ -245,7 +245,7 @@ See [Speculative decoding](docs/src/speculative.md) and the [`speculative`](docs
 available, while returning the same final `Completion` shape as
 `create_completion`. Both high-level helpers clear sequence 0 before
 each call; use lower-level context/session APIs if you need manual KV
-reuse. The [`streaming`](docs/src/examples/streaming.md) example shows
+reuse. The [`streaming`](docs/en/examples/streaming.md) example shows
 the callback loop.
 
 ## Server
@@ -274,7 +274,7 @@ structured generation can use `grammar`, `json_schema`, or
 Multimodal chat is available when the server is built with `--features mtmd`
 and started with `--mmproj`. Generation, embedding, rerank, and tokenizer
 requests may include `model`; the bundled binary serves the model loaded at startup. See
-[Server](docs/src/server.md) for request examples.
+[Server](docs/en/server/index.md) for request examples.
 
 ## Examples
 
@@ -304,14 +304,18 @@ Each example is a standalone Cargo crate and can be copied into another project.
 ## Documentation
 
 - [API documentation](https://docs.rs/llama-crab)
-- [User guide](docs/src/SUMMARY.md)
-- [Examples guide](docs/src/examples/index.md)
-- [Troubleshooting](docs/src/troubleshooting.md)
+- [User guide](docs/en/index.md)
+- [Examples guide](docs/en/examples/index.md)
+- [Troubleshooting](docs/en/troubleshooting.md)
 
 To serve the guide locally:
 
 ```bash
-mdbook serve docs
+cd docs
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+mkdocs serve --config-file mkdocs.yml
 ```
 
 ## Crates

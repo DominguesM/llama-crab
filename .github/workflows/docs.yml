@@ -1,46 +1,47 @@
-# Build the mkdocs-material site and deploy it to GitHub Pages.
+# Build the mkdocs-material site and publish the static output to
+# DominguesM/llama-crab.github.io.
 #
-# This workflow deploys to the user/organisation page at
-# https://llama-crab.github.io/ — for that to work, the documentation
-# source must live in a separate repository named `llama-crab.github.io`
-# (see the "Setup the org page repository" section in docs/README.md).
+# This workflow is intentionally manual-only so docs publishing changes do not
+# trigger the library CI/CD path when merged. To publish, run it from the
+# Actions tab or with:
 #
-# Layout produced on GitHub Pages (org page at
-# https://llama-crab.github.io/):
+#     gh workflow run docs.yml --ref main
 #
-#     /        ← redirect to /en/ (or serve the English site directly)
-#     /en/     ← English site (built from docs/mkdocs.yml, docs_dir=en)
-#     /pt/     ← Portuguese site (built from docs/pt/mkdocs.yml, docs_dir=docs)
+# Required setup:
+# - Add a repository secret named DOCS_PAGES_TOKEN to DominguesM/llama-crab.
+#   The token must have contents:write access to DominguesM/llama-crab.github.io.
+# - In DominguesM/llama-crab.github.io, configure GitHub Pages as:
+#   Settings -> Pages -> Source: Deploy from a branch, Branch: main, Folder: /.
 #
-# The mkdocs-material "stay on page" feature works because both sites
-# share the same page structure (the JavaScript swaps the language
-# prefix in the URL).
-name: Deploy docs to GitHub Pages
+# Default GitHub Pages URL:
+# https://dominguesm.github.io/llama-crab.github.io/
+#
+# Layout published to the target repository:
+#
+#     /        <- English landing page
+#     /en/     <- English site (built from docs/mkdocs.yml, docs_dir=en)
+#     /pt/     <- Portuguese site (built from docs/pt/mkdocs.yml, docs_dir=docs)
+name: Publish docs site
 
 'on':
-  push:
-    branches: [main]
-    paths:
-      - 'docs/**'
-      - '.github/workflows/docs.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
-# Keep Pages deployments serialized without interrupting an active publish.
 concurrency:
-  group: pages
+  group: docs-pages-publish
   cancel-in-progress: false
 
 jobs:
-  build:
-    name: Build mkdocs-material site
+  publish:
+    name: Build and publish mkdocs-material site
     runs-on: ubuntu-latest
+    env:
+      PAGES_REPOSITORY: DominguesM/llama-crab.github.io
+      PAGES_BRANCH: main
     steps:
-      - name: Checkout
+      - name: Checkout source
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -60,55 +61,45 @@ jobs:
         run: pip install -r docs/requirements.txt
 
       - name: Build English site
-        # mkdocs reads `mkdocs.yml` from the working directory and writes
-        # the rendered HTML to `site_dir`. We write to `site_root/en/`
-        # so the English site is served at /en/ on GitHub Pages.
         working-directory: docs
         run: mkdocs build --strict --site-dir ../site_root/en
 
       - name: Build Portuguese site
-        # The Portuguese mkdocs.yml has `docs_dir: docs` so it reads
-        # from docs/pt/docs/. We write the HTML to `site_root/pt/`
-        # so the Portuguese site is served at /pt/ on GitHub Pages.
         working-directory: docs/pt
         run: mkdocs build --strict --site-dir ../../site_root/pt
 
       - name: Make English the default landing page
-        # /en/ has the full English site. Copy its index.html to /
-        # so visiting https://llama-crab.github.io/ shows the docs
-        # landing page (and the language selector lets users switch).
         run: |
           cp site_root/en/index.html site_root/index.html
-          # Also copy the 404 page so the root has one too.
           cp site_root/en/404.html site_root/404.html || true
+          touch site_root/.nojekyll
 
-      - name: Show site root layout
+      - name: Publish to DominguesM/llama-crab.github.io
+        env:
+          DOCS_PAGES_TOKEN: ${{ secrets.DOCS_PAGES_TOKEN }}
         run: |
-          echo "--- site_root top-level ---"
-          ls -la site_root
-          echo
-          echo "--- site_root/en/ (English) ---"
-          ls site_root/en | head -20
-          echo
-          echo "--- site_root/pt/ (Portuguese) ---"
-          ls site_root/pt | head -20
+          set -euo pipefail
 
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v6
+          if [[ -z "${DOCS_PAGES_TOKEN:-}" ]]; then
+            echo "::error::DOCS_PAGES_TOKEN is required to publish ${PAGES_REPOSITORY}"
+            exit 1
+          fi
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: site_root
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-  deploy:
-    name: Deploy to GitHub Pages
-    runs-on: ubuntu-latest
-    needs: build
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@v5
+          repo_url="https://x-access-token:${DOCS_PAGES_TOKEN}@github.com/${PAGES_REPOSITORY}.git"
+          git clone --depth 1 "$repo_url" pages_repo
+
+          rsync -a --delete --exclude '.git' site_root/ pages_repo/
+
+          cd pages_repo
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No documentation changes to publish."
+            exit 0
+          fi
+
+          git commit -m "docs: publish llama-crab site from ${GITHUB_SHA::7}"
+          git push origin "HEAD:${PAGES_BRANCH}"
