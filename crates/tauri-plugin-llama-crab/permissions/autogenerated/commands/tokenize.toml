@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-tokenize"
+description = "Enables the tokenize command without any pre-configured scope."
+commands.allow = ["tokenize"]
+
+[[permission]]
+identifier = "deny-tokenize"
+description = "Denies the tokenize command without any pre-configured scope."
+commands.deny = ["tokenize"]

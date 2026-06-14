@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-tokenize-count"
+description = "Enables the tokenize_count command without any pre-configured scope."
+commands.allow = ["tokenize_count"]
+
+[[permission]]
+identifier = "deny-tokenize-count"
+description = "Denies the tokenize_count command without any pre-configured scope."
+commands.deny = ["tokenize_count"]

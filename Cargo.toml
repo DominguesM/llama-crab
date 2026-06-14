@@ -1,28 +1,14 @@
 [workspace]
 resolver = "2"
 members = [
-    "llama-crab-sys",
-    "llama-crab",
-    "llama-crab-server",
-    "examples/quickstart",
-    "examples/stateful_chat",
-    "examples/embedding_search",
-    "examples/simple",
-    "examples/streaming",
-    "examples/chat",
-    "examples/embeddings",
-    "examples/reranker",
-    "examples/speculative",
-    "examples/tools",
-    "examples/structured",
-    "examples/mtmd",
-    "examples/vision",
-    "examples/lfm_vl_vision",
-    "examples/server_lfm",
+    "crates/llama-crab-sys",
+    "crates/llama-crab",
+    "crates/llama-crab-server",
+    "crates/tauri-plugin-llama-crab",
 ]
 
 [workspace.package]
-version = "0.1.300"
+version = "0.1.4"
 edition = "2021"
 rust-version = "1.88"
 license = "MIT"
@@ -74,6 +60,17 @@ use_self = "allow"
 wrong_self_convention = "allow"
 needless_collect = "allow"
 
+[workspace.dependencies]
+llama-crab-sys = { path = "crates/llama-crab-sys", version = "0.1.4", default-features = false }
+llama-crab = { path = "crates/llama-crab", version = "0.1.4" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", default-features = false }
+tauri-plugin = { version = "2" }
+thiserror = "1"
+tokio = { version = "1", features = ["rt", "sync"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+
 [profile.release]
 lto = "thin"
 codegen-units = 1
@@ -83,11 +80,6 @@ strip = "debuginfo"
 
 [profile.release-perf]
 inherits = "release"
-lto = "thin"
-codegen-units = 1
-opt-level = 3
-debug = false
-strip = "debuginfo"
 
 [profile.release-size]
 inherits = "release"

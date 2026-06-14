@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-detokenize"
+description = "Enables the detokenize command without any pre-configured scope."
+commands.allow = ["detokenize"]
+
+[[permission]]
+identifier = "deny-detokenize"
+description = "Denies the detokenize command without any pre-configured scope."
+commands.deny = ["detokenize"]

@@ -7,7 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.300] - 2026-06-14
+### Changed
+
+- Moved the documentation site out of this repository into a dedicated
+  repository: [DominguesM/llama-crab-docs](https://github.com/DominguesM/llama-crab-docs).
+  The site is now published at
+  <https://dominguesm.github.io/llama-crab-docs/> instead of
+  <https://dominguesm.github.io/llama-crab/>. The `docs/` folder and the
+  `Publish docs site` GitHub Actions workflow have been removed from this
+  repo. README files and crate-level docs throughout this workspace were
+  updated to point at the new URL. The historical Docusaurus source tree
+  is preserved at `legacy-docusaurus/` in the docs repo for reference.
+
+### Added
+
+- `tauri-plugin-llama-crab`: added a `Config` struct and `init_with_config`
+  entry point so consumers can apply plugin-wide defaults (n_ctx, n_batch,
+  n_ubatch, n_threads, n_threads_batch, n_gpu_layers, default model name)
+  at startup. Anything left as `None` lets the per-request field win, with
+  the `llama-crab` defaults as the final fallback.
+- `tauri-plugin-llama-crab`: added the `mtmd` cargo feature. When enabled,
+  `load_model` can take an `mmproj_path` and the chat pipeline runs
+  multimodal (vision) inference through `llama.cpp`'s `mtmd` projector.
+  Image inputs are accepted as `data:image/...;base64,...` URLs and as
+  local file paths.
+- `tauri-plugin-llama-crab`: added granular `PluginError` kinds
+  (`workerSpawnFailed`, `workerDisconnected`, `workerPanicked`,
+  `multimodalNotEnabled`, `multimodalSetup`, `mediaDecode`) so the
+  TypeScript client can distinguish failure modes instead of collapsing
+  every error into `worker`.
+
+### Changed
+
+- `tauri-plugin-llama-crab`: `JoinError` from `spawn_blocking` now maps
+  to `workerPanicked`; `mpsc::RecvError` maps to `workerDisconnected`;
+  thread-spawn failures map to `workerSpawnFailed`.
+- `@llama-crab/tauri`: the Support Matrix entry for multimodal now
+  reflects that the Rust plugin must be built with the `mtmd` cargo
+  feature for image parts to be processed.
+
+## [0.1.4] - 2026-06-14
 
 ### Added
 
@@ -25,6 +64,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   target for launching the HTTP server with LFM text models.
 - Added the `streaming` example to demonstrate callback-driven text
   generation.
+- Added `tauri-plugin-llama-crab`, a Tauri IPC runtime for loading
+  GGUF models and exposing OpenAI-like chat, completion, embedding,
+  rerank, tokenization and model-management commands.
+- Added the `@llama-crab/core` and `@llama-crab/tauri` TypeScript
+  packages with shared OpenAI-like contracts, request mappers and a
+  Tauri client.
+- Added the `tauri-chat-lfm` desktop example and smoke coverage for
+  the Tauri chat workflow.
 - Added mobile-oriented runtime presets through `MobilePreset` and
   `LlamaParams::with_mobile_preset`.
 - Added broader tool-call streaming support, including OpenAI-style
@@ -33,13 +80,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Migrated the user guide from mdBook to Material for MkDocs, with
-  English and Portuguese documentation trees and expanded server,
-  mobile, streaming, chat, embeddings and grammar coverage.
-- README files now point users to the new MkDocs guide hosted at the
+- Migrated the user guide from mdBook/MkDocs-era documentation to
+  Docusaurus, with expanded server, mobile, Tauri, TypeScript,
+  streaming, chat, embeddings and grammar coverage.
+- Reorganized the repository into `crates/` and `packages/` workspaces
+  so Rust crates, TypeScript packages and examples share one release
+  surface.
+- README files now point users to the new Docusaurus guide hosted at the
   GitHub Pages site.
 - CI and release workflows now build, test and publish
-  `llama-crab-server` alongside the library crates.
+  `llama-crab-server`, `tauri-plugin-llama-crab` and TypeScript
+  packages alongside the library crates.
 - CI workflows now run through manual dispatch instead of push triggers,
   and documentation jobs use nightly Cargo where required.
 - The `hf-tokenizer` dependency now enables the `onig` feature for
@@ -232,8 +283,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 9 example crates and 3 integration tests covering Gemma 4 and
   LFM2.5-VL.
 
-[Unreleased]: https://github.com/DominguesM/llama-crab/compare/v0.1.300...HEAD
-[0.1.300]: https://github.com/DominguesM/llama-crab/compare/v0.1.201...v0.1.300
+[Unreleased]: https://github.com/DominguesM/llama-crab/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/DominguesM/llama-crab/compare/v0.1.201...v0.1.4
 [0.1.201]: https://github.com/DominguesM/llama-crab/compare/v0.1.2...v0.1.201
 [0.1.2]: https://github.com/DominguesM/llama-crab/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/DominguesM/llama-crab/compare/v0.1.0...v0.1.1

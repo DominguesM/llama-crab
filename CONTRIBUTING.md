@@ -31,6 +31,9 @@ Thanks for your interest! 🎉
 - Prefer strongly typed enums over `i32` constants
 - Errors implement `std::error::Error + Send + Sync` via `thiserror`
 - `unsafe` is **only** allowed in `llama-crab-sys`; the safe crate is 100% safe
+- The root `tsconfig.json` is intentionally empty (`files: []`) so TypeScript
+  checks run through package scripts instead of accidentally typechecking the
+  workspace root. Use `pnpm typecheck` for JavaScript/TypeScript validation.
 
 ## MSRV
 
