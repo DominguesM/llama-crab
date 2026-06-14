@@ -107,3 +107,59 @@ jobs:
           else
             cargo publish -p llama-crab --no-verify --token "$CARGO_REGISTRY_TOKEN"
           fi
+
+      - name: Wait for crates.io index (llama-crab)
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          version_exists() {
+            python3 - "$1" "$2" <<'PY'
+          import sys
+          import urllib.request
+
+          crate, version = sys.argv[1], sys.argv[2]
+          try:
+              with urllib.request.urlopen(f"https://crates.io/api/v1/crates/{crate}/{version}", timeout=20) as response:
+                  sys.exit(0 if response.status == 200 else 1)
+          except Exception:
+              sys.exit(1)
+          PY
+          }
+
+          for attempt in {1..30}; do
+            if version_exists llama-crab "$VERSION"; then
+              echo "llama-crab $VERSION is visible in the crates.io index"
+              exit 0
+            fi
+            echo "waiting for llama-crab $VERSION in crates.io index ($attempt/30)"
+            sleep 10
+          done
+          echo "::error::llama-crab $VERSION did not appear in the crates.io index"
+          exit 1
+
+      - name: Publish llama-crab-server
+        shell: bash
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          version_exists() {
+            python3 - "$1" "$2" <<'PY'
+          import sys
+          import urllib.request
+
+          crate, version = sys.argv[1], sys.argv[2]
+          try:
+              with urllib.request.urlopen(f"https://crates.io/api/v1/crates/{crate}/{version}", timeout=20) as response:
+                  sys.exit(0 if response.status == 200 else 1)
+          except Exception:
+              sys.exit(1)
+          PY
+          }
+
+          if version_exists llama-crab-server "$VERSION"; then
+            echo "llama-crab-server $VERSION is already published"
+          else
+            cargo publish -p llama-crab-server --no-verify --token "$CARGO_REGISTRY_TOKEN"
+          fi

@@ -46,11 +46,13 @@ jobs:
           sudo apt-get install -y libvulkan-dev
           cargo clippy -p llama-crab-sys --no-default-features --features openmp,mtmd --all-targets
           cargo clippy -p llama-crab --no-default-features --features openmp,mtmd,disk-cache --all-targets
+          cargo clippy -p llama-crab-server --all-targets
       - name: macOS
         if: matrix.os == 'macos-latest'
         run: |
           cargo clippy -p llama-crab-sys --no-default-features --features metal,mtmd --all-targets
           cargo clippy -p llama-crab --no-default-features --features metal,mtmd,disk-cache --all-targets
+          cargo clippy -p llama-crab-server --all-targets
 
   build:
     name: Build (${{ matrix.name }})
@@ -106,6 +108,7 @@ jobs:
             cargo build -p llama-crab-sys --no-default-features
             cargo build -p llama-crab --no-default-features
           fi
+          cargo build -p llama-crab-server
 
   feature-surface:
     name: Feature surface (Linux)
@@ -145,9 +148,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libvulkan-dev
           cargo test -p llama-crab --no-default-features --features openmp,mtmd,disk-cache
+          cargo test -p llama-crab-server
       - name: macOS
         if: matrix.os == 'macos-latest'
-        run: cargo test -p llama-crab --no-default-features --features metal,mtmd,disk-cache
+        run: |
+          cargo test -p llama-crab --no-default-features --features metal,mtmd,disk-cache
+          cargo test -p llama-crab-server
 
   doc:
     name: Doc (strict)
