@@ -25,6 +25,12 @@ out="$(run_dry embedding_search 'What is safe systems programming?')"
 grep -Fq "cargo run --release --bin run_embeddings -- models/bge-small-en-v1.5-q4_k_m.gguf What is safe systems programming?" <<<"$out" \
   || fail "embedding_search dry-run did not preserve extra query args"
 
+out="$(run_dry tauri_chat_lfm)"
+grep -Fq "skipped download (LLAMA_CRAB_SKIP_DOWNLOAD=1)" <<<"$out" \
+  || fail "tauri_chat_lfm dry-run must not call the shared model downloader"
+grep -Fq "pnpm --filter tauri-chat-lfm tauri dev" <<<"$out" \
+  || fail "tauri_chat_lfm dry-run did not run the Tauri app command"
+
 out="$(LLAMA_CRAB_DRY_RUN=1 ./scripts/download_models.sh smol)"
 grep -Fq "hf download Qwen/Qwen2.5-0.5B-Instruct-GGUF qwen2.5-0.5b-instruct-q4_k_m.gguf" <<<"$out" \
   || fail "download dry-run did not use hf download for smol"

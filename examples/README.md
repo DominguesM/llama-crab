@@ -18,6 +18,7 @@ required by the example (if missing) and then builds + runs it:
 ./examples/run.sh vision lfm-vl         # LFM2.5-VL 1.6B text + image
 ./examples/run.sh lfm_vl                # REPL against the LFM VL model
 ./examples/run.sh server_lfm            # llama-crab-server w/ LFM2.5-VL
+./examples/run.sh tauri_chat_lfm        # Tauri chat app w/ automatic download progress
 ./examples/run.sh multimodal_http       # mtmd-enabled HTTP chat server
 ./examples/run.sh rerank                # HTTP reranking server
 ./examples/run.sh tools                 # function-calling demo
@@ -51,7 +52,8 @@ examples/
 ├── mtmd/                        # multimodal (vision) via mtmd.h
 ├── vision/                      # vision via the high-level API
 ├── lfm_vl_vision/               # LFM2.5-VL multimodal REPL
-└── server_lfm/                  # llama-crab-server wired for LFM2.5-VL
+├── server_lfm/                  # llama-crab-server wired for LFM2.5-VL
+└── tauri-chat-lfm/              # one-page Tauri chat app for LFM2.5 350M
 ```
 
 ## Per-example guide
@@ -73,11 +75,15 @@ examples/
 | `vision`             | same model (or `LFM2.5-VL-1.6B`)       | ~5 GB | High-level `MtmdContext` API |
 | `lfm_vl`             | `unsloth/LFM2.5-VL-1.6B-GGUF`          | ~1 GB | LFM2.5-VL 1.6B multimodal REPL |
 | `server_lfm`         | `unsloth/LFM2.5-VL-1.6B-GGUF`          | ~1 GB | Boots `llama-crab-server` pre-wired for LFM2.5-VL |
+| `tauri_chat_lfm`     | `LiquidAI/LFM2.5-350M-GGUF`            | ~229 MB | One-page Tauri chat app with automatic download progress |
 | `multimodal_http`    | same as `server_lfm`                   | ~1 GB | Boots `llama-crab-server --features mtmd -- --mmproj ...` |
 | `rerank`             | `turingevo/bge-reranker-base-Q4_K_M-GGUF` | varies | Boots `llama-crab-server --reranking --pooling rank` |
 
 The two vision examples both need a vision-language GGUF **and** its
 `mmproj-*.gguf` projector file. `download_models.sh` downloads both.
+The `tauri_chat_lfm` example is different: the Tauri app downloads its
+fixed LFM2.5 350M GGUF on first use and shows download progress
+(`progresso do download`) in the app window.
 
 ## Running an example by hand
 

@@ -9,6 +9,7 @@
 #   ./examples/run.sh vision lfm-vl        # downloads LFM2.5-VL
 #   ./examples/run.sh lfm_vl               # REPL against the LFM VL model
 #   ./examples/run.sh server_lfm           # boots llama-crab-server w/ LFM
+#   ./examples/run.sh tauri_chat_lfm       # opens the Tauri chat example
 #   ./examples/run.sh embeddings           # downloads BGE-small
 #   ./examples/run.sh rerank               # boots server with a reranker
 #   ./examples/run.sh multimodal_http      # boots mtmd-enabled server w/ LFM
@@ -56,6 +57,7 @@ example_target_bin() {
     mtmd)              echo "vision_model|mtmd" ;;
     lfm_vl)            echo "lfm-vl|run_lfm_vl" ;;
     server_lfm)        echo "lfm-text|run_server_lfm" ;;
+    tauri_chat_lfm)    echo "none|__tauri_chat_lfm" ;;
     multimodal_http)   echo "lfm-vl|__server_multimodal" ;;
     *) return 1 ;;
   esac
@@ -85,8 +87,13 @@ if [[ $# -lt 1 ]]; then
   echo "Available examples:" >&2
   for ex in quickstart streaming chat stateful_chat simple structured tools \
             tool_calls_qwen embeddings embedding_search rerank reranker \
-            speculative vision mtmd lfm_vl server_lfm multimodal_http; do
-    printf "  %-18s  (downloads + runs the binary)\n" "$ex" >&2
+            speculative vision mtmd lfm_vl server_lfm tauri_chat_lfm \
+            multimodal_http; do
+    if [[ "$ex" == "tauri_chat_lfm" ]]; then
+      printf "  %-18s  (opens the Tauri app; app downloads the model)\n" "$ex" >&2
+    else
+      printf "  %-18s  (downloads + runs the binary)\n" "$ex" >&2
+    fi
   done
   echo >&2
   echo "Vision examples also need a model choice: $0 vision gemma4" >&2
@@ -100,7 +107,8 @@ if ! mapping="$(example_target_bin "$example")"; then
   echo "unknown example: $example" >&2
   echo "available: quickstart, streaming, chat, stateful_chat, simple, structured, tools," >&2
   echo "           tool_calls_qwen, embeddings, embedding_search, rerank, reranker," >&2
-  echo "           speculative, vision, mtmd, lfm_vl, server_lfm, multimodal_http" >&2
+  echo "           speculative, vision, mtmd, lfm_vl, server_lfm, tauri_chat_lfm," >&2
+  echo "           multimodal_http" >&2
   exit 2
 fi
 
@@ -133,6 +141,8 @@ fi
 echo "==> ensuring model is available (target=$download_target)"
 if [[ "${LLAMA_CRAB_SKIP_DOWNLOAD:-0}" == "1" ]]; then
   echo "==> skipped download (LLAMA_CRAB_SKIP_DOWNLOAD=1)"
+elif [[ "$download_target" == "none" ]]; then
+  echo "==> skipped download (example handles downloads at runtime)"
 else
   ./scripts/download_models.sh "$download_target"
 fi
@@ -146,6 +156,10 @@ case "$bin" in
   __server_multimodal)
     if [[ "${1:-}" == "--" ]]; then shift; fi
     cmd=(cargo run --release -p llama-crab-server --features mtmd -- --model "$LFM_MODEL" --mmproj "$LFM_MMPROJ" "$@")
+    ;;
+  __tauri_chat_lfm)
+    if [[ "${1:-}" == "--" ]]; then shift; fi
+    cmd=(pnpm --filter tauri-chat-lfm tauri dev "$@")
     ;;
   *)
     cmd=(cargo run --release --bin "$bin" -- "${model_args[@]}" "$@")
