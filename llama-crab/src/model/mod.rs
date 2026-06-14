@@ -179,9 +179,8 @@ impl LlamaModel {
     ///
     /// UTF-8 decoding is **lossy**: bytes that do not form a valid UTF-8
     /// sequence are replaced with the Unicode replacement character
-    /// (`U+FFFD`). This matches `llama.cpp` and `llama-cpp-python`: BPE
-    /// tokenizers can emit individual tokens whose raw bytes are not
-    /// valid UTF-8, especially around non-Latin scripts and emoji.
+    /// (`U+FFFD`). BPE tokenizers can emit individual tokens whose raw bytes
+    /// are not valid UTF-8, especially around non-Latin scripts and emoji.
     pub fn detokenize(&self, tokens: &[LlamaToken], special: bool) -> Result<String> {
         let mut raw_buf: Vec<u8> = vec![0; 64];
         let mut len = raw_buf.len() as i32;

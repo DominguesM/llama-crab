@@ -1,8 +1,6 @@
 //! JSON Schema → GBNF grammar converter.
 //!
-//! A pure-Rust port of `llama-cpp-python`'s
-//! `SchemaConverter` (which itself wraps llama.cpp's
-//! `common::json_schema_to_grammar`). Supports a useful subset of
+//! A pure-Rust converter for JSON Schema to GBNF. Supports a useful subset of
 //! [JSON Schema 2020-12] including:
 //!
 //! * `type`: `object`, `array`, `string`, `integer`, `number`, `boolean`, `null`

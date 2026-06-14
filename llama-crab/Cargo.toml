@@ -37,7 +37,7 @@ required-features = ["mtmd"]
 workspace = true
 
 [dependencies]
-llama-crab-sys = { path = "../llama-crab-sys", version = "0.1.201", default-features = false }
+llama-crab-sys = { path = "../llama-crab-sys", version = "0.1.300", default-features = false }
 thiserror = "1"
 tracing = "0.1"
 tracing-core = "0.1"
@@ -53,7 +53,7 @@ image = { version = "0.25", optional = true }
 base64 = { version = "0.22", optional = true }
 llguidance_lib = { version = "1.7", package = "llguidance", optional = true }
 toktrie = { version = "1.7", package = "toktrie", optional = true }
-tokenizers = { version = "0.20", default-features = false, features = ["http"], optional = true }
+tokenizers = { version = "0.20", default-features = false, features = ["http", "onig"], optional = true }
 sled = { version = "0.34", optional = true }
 
 # Optional: tracing-subscriber integration is a runtime-only concern
@@ -71,9 +71,13 @@ cuda = ["llama-crab-sys/cuda"]
 cuda-no-vmm = ["llama-crab-sys/cuda-no-vmm"]
 vulkan = ["llama-crab-sys/vulkan"]
 rocm = ["llama-crab-sys/rocm"]
+opencl = ["llama-crab-sys/opencl"]
+kleidiai = ["llama-crab-sys/kleidiai"]
 dynamic-link = ["llama-crab-sys/dynamic-link"]
 dynamic-backends = ["llama-crab-sys/dynamic-backends"]
 system-ggml = ["llama-crab-sys/system-ggml"]
+shared-stdcxx = ["llama-crab-sys/shared-stdcxx"]
+static-stdcxx = ["llama-crab-sys/static-stdcxx"]
 common = ["llama-crab-sys/common"]
 mtmd = ["llama-crab-sys/mtmd", "dep:image", "dep:base64"]
 llguidance = ["llama-crab-sys/llguidance", "dep:llguidance_lib", "dep:toktrie"]

@@ -1,10 +1,9 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -43,15 +42,17 @@ jobs:
       - name: Linux
         if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libvulkan-dev
-          cargo clippy -p llama-crab-sys --no-default-features --features openmp,mtmd --all-targets
-          cargo clippy -p llama-crab --no-default-features --features openmp,mtmd,disk-cache --all-targets
+          cargo clippy -p llama-crab-sys --no-default-features --all-targets
+          cargo clippy -p llama-crab --no-default-features --features common,mtmd,hf-tokenizer,disk-cache --all-targets
+          cargo clippy -p llama-crab-server --all-targets
+          cargo clippy -p llama-crab-server --features mtmd --all-targets
       - name: macOS
         if: matrix.os == 'macos-latest'
         run: |
-          cargo clippy -p llama-crab-sys --no-default-features --features metal,mtmd --all-targets
-          cargo clippy -p llama-crab --no-default-features --features metal,mtmd,disk-cache --all-targets
+          cargo clippy -p llama-crab-sys --no-default-features --all-targets
+          cargo clippy -p llama-crab --no-default-features --features common,mtmd,hf-tokenizer,disk-cache --all-targets
+          cargo clippy -p llama-crab-server --all-targets
+          cargo clippy -p llama-crab-server --features mtmd --all-targets
 
   build:
     name: Build (${{ matrix.name }})
@@ -60,29 +61,47 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: linux-openmp
+          - name: linux-none
             os: ubuntu-latest
-            sys-features: openmp
-            features: openmp
-          - name: linux-vulkan
+            features: ""
+          - name: linux-common
             os: ubuntu-latest
-            sys-features: openmp,vulkan
-            features: openmp,vulkan
+            features: common
           - name: linux-mtmd
             os: ubuntu-latest
-            sys-features: openmp,mtmd
-            features: openmp,mtmd,disk-cache
-          - name: macos-metal
+            features: mtmd
+          - name: linux-hf-tokenizer
+            os: ubuntu-latest
+            features: hf-tokenizer
+          - name: linux-disk-cache
+            os: ubuntu-latest
+            features: disk-cache
+          - name: linux-combo
+            os: ubuntu-latest
+            features: common,mtmd,hf-tokenizer
+          - name: linux-server-mtmd
+            os: ubuntu-latest
+            features: ""
+          - name: macos-none
             os: macos-latest
-            sys-features: metal
-            features: metal
+            features: ""
+          - name: macos-common
+            os: macos-latest
+            features: common
           - name: macos-mtmd
             os: macos-latest
-            sys-features: metal,mtmd
-            features: metal,mtmd,disk-cache
-          - name: windows-minimal
-            os: windows-latest
-            sys-features: ""
+            features: mtmd
+          - name: macos-hf-tokenizer
+            os: macos-latest
+            features: hf-tokenizer
+          - name: macos-disk-cache
+            os: macos-latest
+            features: disk-cache
+          - name: macos-combo
+            os: macos-latest
+            features: common,mtmd,hf-tokenizer
+          - name: macos-server-mtmd
+            os: macos-latest
             features: ""
     steps:
       - uses: actions/checkout@v4
@@ -92,21 +111,43 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-      - name: Install Vulkan (Linux)
-        if: matrix.os == 'ubuntu-latest' && contains(matrix.features, 'vulkan')
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y glslang-tools glslc libvulkan-dev mesa-vulkan-drivers spirv-headers spirv-tools vulkan-tools
       - name: Build workspace
         shell: bash
         run: |
           if [ -n "${{ matrix.features }}" ]; then
-            cargo build -p llama-crab-sys --no-default-features --features "${{ matrix.sys-features }}"
             cargo build -p llama-crab --no-default-features --features "${{ matrix.features }}"
           else
-            cargo build -p llama-crab-sys --no-default-features
             cargo build -p llama-crab --no-default-features
           fi
+          cargo build -p llama-crab-server
+      - name: Build server mtmd
+        if: contains(matrix.name, 'server-mtmd')
+        run: cargo build -p llama-crab-server --features mtmd
+
+  feature-surface:
+    name: Feature surface (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@1.88
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Check optional Linux-safe features
+        env:
+          RUSTFLAGS: ""
+        run: |
+          cargo check -p llama-crab --no-default-features
+          cargo check -p llama-crab --no-default-features --features common
+          cargo check -p llama-crab --no-default-features --features mtmd
+          cargo check -p llama-crab --no-default-features --features hf-tokenizer
+          cargo check -p llama-crab --no-default-features --features disk-cache
+          cargo check -p llama-crab --no-default-features --features common,mtmd,hf-tokenizer
+          cargo check -p llama-crab --no-default-features --features dynamic-link,opencl
+          cargo check -p llama-crab --no-default-features --features dynamic-link,kleidiai
+          cargo check -p llama-crab --no-default-features --features dynamic-link,opencl,kleidiai
 
   test:
     name: Test
@@ -126,12 +167,15 @@ jobs:
       - name: Linux
         if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libvulkan-dev
-          cargo test -p llama-crab --no-default-features --features openmp,mtmd,disk-cache
+          cargo test -p llama-crab --no-default-features --features common,mtmd,disk-cache
+          cargo test -p llama-crab-server
+          cargo test -p llama-crab-server --features mtmd
       - name: macOS
         if: matrix.os == 'macos-latest'
-        run: cargo test -p llama-crab --no-default-features --features metal,mtmd,disk-cache
+        run: |
+          cargo test -p llama-crab --no-default-features --features common,mtmd,disk-cache
+          cargo test -p llama-crab-server
+          cargo test -p llama-crab-server --features mtmd
 
   doc:
     name: Doc (strict)
@@ -140,11 +184,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-      - uses: dtolnay/rust-toolchain@1.88
+      - uses: dtolnay/rust-toolchain@nightly
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
       - name: Document llama-crab
-        run: RUSTDOCFLAGS="-D warnings" cargo doc -p llama-crab --no-deps --no-default-features --features openmp,mtmd
+        run: RUSTDOCFLAGS="--cfg docsrs -D warnings" cargo +nightly doc -p llama-crab --no-deps --no-default-features --features common,mtmd
       - name: Document llama-crab-sys
-        run: cargo doc -p llama-crab-sys --no-deps --no-default-features --features openmp,mtmd
+        run: RUSTDOCFLAGS="--cfg docsrs -D warnings" cargo +nightly doc -p llama-crab-sys --no-deps --no-default-features --features common,mtmd

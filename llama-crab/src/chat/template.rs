@@ -197,7 +197,7 @@ pub fn render_builtin(
         if m.role == Role::System && sys.is_empty() {
             sys = m.content.clone();
         } else {
-            conv.push((m.role, m.content.clone()));
+            conv.push((m.role, builtin_message_content(template, m)));
         }
     }
     if !tools.is_empty() && sys.is_empty() {
@@ -220,6 +220,32 @@ pub fn render_builtin(
         BuiltinTemplate::OpenAssistant => render_oasst(&sys, &conv, add_generation_prompt),
         BuiltinTemplate::Plain => render_plain(&sys, &conv, add_generation_prompt),
     }
+}
+
+fn builtin_message_content(template: BuiltinTemplate, message: &ChatMessage) -> String {
+    match template {
+        BuiltinTemplate::ChatMl => chatml_message_content(message),
+        _ => message.content.clone(),
+    }
+}
+
+fn chatml_message_content(message: &ChatMessage) -> String {
+    let mut content = message.content.clone();
+    if message.role == Role::Assistant && !message.tool_calls.is_empty() {
+        if !content.is_empty() {
+            content.push('\n');
+        }
+        for call in &message.tool_calls {
+            let raw = json!({
+                "name": call.name,
+                "arguments": call.arguments,
+            });
+            content.push_str("<tool_call>");
+            content.push_str(&raw.to_string());
+            content.push_str("</tool_call>");
+        }
+    }
+    content
 }
 
 fn tool_definitions_as_system_message(tools: &[ToolDefinition]) -> String {
@@ -1651,5 +1677,16 @@ mod tests {
         );
         assert!(p.contains("get_weather"));
         assert!(p.contains("system:"));
+    }
+
+    #[test]
+    fn builtin_chatml_renders_assistant_tool_calls() {
+        let message = ChatMessage::new(Role::Assistant, "").with_tool_call(
+            crate::chat::ToolCall::new("call_weather", "get_weather", json!({"city": "Tokyo"})),
+        );
+        let p = render_builtin(BuiltinTemplate::ChatMl, &[message], &[], false);
+        assert!(p.contains("<tool_call>"));
+        assert!(p.contains(r#""name":"get_weather""#));
+        assert!(p.contains(r#""city":"Tokyo""#));
     }
 }

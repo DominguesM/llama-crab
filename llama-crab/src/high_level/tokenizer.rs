@@ -1,12 +1,7 @@
 //! Tokenizer abstractions and FIM (Fill-in-Middle) support.
 //!
-//! `llama-cpp-python` exposes three tokenizers:
-//!
-//! * The **native** llama.cpp tokenizer (always available).
-//! * A **HuggingFace** AutoTokenizer (via the `tokenizers` crate,
-//!   gated behind the `hf-tokenizer` cargo feature).
-//! * A **sentencepiece** tokenizer (rarely needed; llama.cpp uses it
-//!   internally for SPM models).
+//! The native llama.cpp tokenizer is always available. Hugging Face tokenizer
+//! support is available through the `hf-tokenizer` cargo feature.
 //!
 //! The [`Tokenizer`] trait gives downstream code a uniform API; the
 //! provided [`LlamaTokenizer`] delegates to the model that is loaded.
@@ -61,8 +56,8 @@ impl<'a> Tokenizer for LlamaTokenizer<'a> {
 /// <PRE> {prefix} <SUF> {suffix} <MID> {completion}
 /// ```
 ///
-/// `llama-cpp-python` exposes the special token ids of those markers via
-/// `model.token_fim_pre()` etc. We mirror that here.
+/// The model exposes the special token ids for those markers through
+/// llama.cpp's vocabulary API.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FimTokens {
     /// Token used to introduce the prefix.

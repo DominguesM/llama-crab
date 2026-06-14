@@ -3,14 +3,28 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Validate packaging without publishing to crates.io"
+        type: boolean
+        default: true
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: crates-release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   publish:
     name: Publish crates
     runs-on: ubuntu-latest
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      DRY_RUN: ${{ inputs.dry_run || 'false' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,43 +36,75 @@ jobs:
         id: version
         shell: bash
         run: |
-          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          version=$(python3 - <<'PY'
+          import tomllib
+
+          with open("Cargo.toml", "rb") as f:
+              cargo = tomllib.load(f)
+          print(cargo["workspace"]["package"]["version"])
+          PY
+          )
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Publish llama-crab-sys
+      - name: Validate release metadata
         shell: bash
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          version_exists() {
-            python3 - "$1" "$2" <<'PY'
-          import json
-          import sys
-          import urllib.request
-
-          crate, version = sys.argv[1], sys.argv[2]
-          try:
-              with urllib.request.urlopen(f"https://crates.io/api/v1/crates/{crate}/{version}", timeout=20) as response:
-                  sys.exit(0 if response.status == 200 else 1)
-          except Exception:
-              sys.exit(1)
-          PY
-          }
-
-          if version_exists llama-crab-sys "$VERSION"; then
-            echo "llama-crab-sys $VERSION is already published"
-          else
-            cargo publish -p llama-crab-sys --no-verify --token "$CARGO_REGISTRY_TOKEN"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" != "v${VERSION}" ]]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match workspace version v${VERSION}"
+            exit 1
           fi
 
-      - name: Wait for crates.io index
+          python3 - <<'PY'
+          import pathlib
+          import tomllib
+
+          root = pathlib.Path(".")
+          with (root / "Cargo.toml").open("rb") as f:
+              workspace = tomllib.load(f)
+
+          version = workspace["workspace"]["package"]["version"]
+          crates = {
+              "llama-crab-sys": root / "llama-crab-sys" / "Cargo.toml",
+              "llama-crab": root / "llama-crab" / "Cargo.toml",
+              "llama-crab-server": root / "llama-crab-server" / "Cargo.toml",
+          }
+
+          manifests = {}
+          for crate, path in crates.items():
+              with path.open("rb") as f:
+                  manifest = tomllib.load(f)
+              package = manifest["package"]
+              if package["name"] != crate:
+                  raise SystemExit(f"{path}: expected package name {crate}, got {package['name']}")
+              package_version = version if package.get("version", {}).get("workspace") else package.get("version")
+              if package_version != version:
+                  raise SystemExit(f"{crate}: version {package_version} does not match workspace {version}")
+              if package.get("publish") is False:
+                  raise SystemExit(f"{crate}: publish=false prevents crates.io deployment")
+              manifests[crate] = manifest
+
+          sys_dep = manifests["llama-crab"]["dependencies"]["llama-crab-sys"]
+          if sys_dep.get("version") != version:
+              raise SystemExit("llama-crab dependency on llama-crab-sys must match the workspace version")
+
+          core_dep = manifests["llama-crab-server"]["dependencies"]["llama-crab"]
+          if core_dep.get("version") != version:
+              raise SystemExit("llama-crab-server dependency on llama-crab must match the workspace version")
+
+          print(f"release metadata ok for {', '.join(crates)} {version}")
+          PY
+
+      - name: Publish crates
         shell: bash
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
+          set -euo pipefail
+
           version_exists() {
-            python3 - "$1" "$2" <<'PY'
+            python3 - "$1" "$VERSION" <<'PY'
           import sys
           import urllib.request
 
@@ -71,39 +117,56 @@ jobs:
           PY
           }
 
-          for attempt in {1..30}; do
-            if version_exists llama-crab-sys "$VERSION"; then
-              echo "llama-crab-sys $VERSION is visible in the crates.io index"
-              exit 0
+          wait_for_crate() {
+            local crate="$1"
+            for attempt in {1..30}; do
+              if version_exists "$crate"; then
+                echo "$crate $VERSION is visible in the crates.io index"
+                return 0
+              fi
+              echo "waiting for $crate $VERSION in crates.io index ($attempt/30)"
+              sleep 10
+            done
+            echo "::error::$crate $VERSION did not appear in the crates.io index"
+            return 1
+          }
+
+          publish_crate() {
+            local crate="$1"
+            local args=(publish -p "$crate" --no-verify)
+
+            if [[ "$DRY_RUN" == "true" ]]; then
+              if [[ "$crate" == "llama-crab" ]] && ! version_exists llama-crab-sys; then
+                echo "::notice::$crate publish dry-run needs llama-crab-sys $VERSION in crates.io; listing package contents instead"
+                cargo package -p "$crate" --list
+                return 0
+              fi
+              if [[ "$crate" == "llama-crab-server" ]] && ! version_exists llama-crab; then
+                echo "::notice::$crate publish dry-run needs llama-crab $VERSION in crates.io; listing package contents instead"
+                cargo package -p "$crate" --list
+                return 0
+              fi
+              echo "dry-run publishing $crate $VERSION"
+              args+=(--dry-run)
+            elif version_exists "$crate"; then
+              echo "$crate $VERSION is already published"
+              return 0
+            elif [[ -z "${CARGO_REGISTRY_TOKEN:-}" ]]; then
+              echo "::error::CARGO_REGISTRY_TOKEN is required to publish $crate"
+              return 1
             fi
-            echo "waiting for llama-crab-sys $VERSION in crates.io index ($attempt/30)"
-            sleep 10
-          done
-          echo "::error::llama-crab-sys $VERSION did not appear in the crates.io index"
-          exit 1
 
-      - name: Publish llama-crab
-        shell: bash
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          version_exists() {
-            python3 - "$1" "$2" <<'PY'
-          import sys
-          import urllib.request
+            if [[ -n "${CARGO_REGISTRY_TOKEN:-}" ]]; then
+              args+=(--token "$CARGO_REGISTRY_TOKEN")
+            fi
 
-          crate, version = sys.argv[1], sys.argv[2]
-          try:
-              with urllib.request.urlopen(f"https://crates.io/api/v1/crates/{crate}/{version}", timeout=20) as response:
-                  sys.exit(0 if response.status == 200 else 1)
-          except Exception:
-              sys.exit(1)
-          PY
+            cargo "${args[@]}"
+
+            if [[ "$DRY_RUN" != "true" ]]; then
+              wait_for_crate "$crate"
+            fi
           }
 
-          if version_exists llama-crab "$VERSION"; then
-            echo "llama-crab $VERSION is already published"
-          else
-            cargo publish -p llama-crab --no-verify --token "$CARGO_REGISTRY_TOKEN"
-          fi
+          publish_crate llama-crab-sys
+          publish_crate llama-crab
+          publish_crate llama-crab-server

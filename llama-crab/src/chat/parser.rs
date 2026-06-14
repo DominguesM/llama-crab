@@ -1,10 +1,7 @@
-//! Streaming state for the OpenAI-compat chat-template parser.
+//! Streaming state for structured chat-template output.
 //!
-//! In v0.1 the streaming side is fully handled by the C-ABI shim
-//! exposed by `llama-crab-sys::llama_rs_chat_parse_state_*` (linked in
-//! from `wrappers/oaicompat.cpp` when the `common` feature is enabled).
-//! The Rust side exposes a thin convenience wrapper that hides the
-//! raw C pointers and gives a safe iterator-style interface.
+//! This is a pure-Rust buffering parser for JSON objects emitted during
+//! generation.
 //!
 //! For tool-call streaming (different concern, same theme), see
 //! [`super::tool_call::ToolParser`].
@@ -13,12 +10,11 @@ use serde_json::Value;
 
 use crate::error::{LlamaError, Result};
 
-/// A streaming JSON parser for the OAI-compat chat-template output.
+/// A streaming JSON parser for structured chat-template output.
 ///
-/// Currently the Rust side just buffers the entire input and parses
-/// it as a single JSON document; the C++ shim has a token-by-token
-/// streaming variant. This wrapper keeps the public surface stable
-/// while we work on a pure-Rust streaming implementation.
+/// Currently this buffers input and parses it once a complete JSON object
+/// appears. This wrapper keeps the public surface stable while richer
+/// incremental parsing evolves.
 #[derive(Debug, Default)]
 pub struct ChatParseState {
     buffer: String,

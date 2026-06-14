@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.300] - 2026-06-14
+
+### Added
+
+- Added high-level streaming completion APIs, including
+  `create_completion_stream`, `create_completion_stream_with_sampler`,
+  `CompletionChunk`, `StreamControl` and richer completion logprob
+  metadata.
+- Added `llama-crab-server`, an HTTP server binary for local inference
+  with completions, chat completions, embeddings, reranking,
+  tokenization, detokenization, SSE streaming and optional multimodal
+  chat support.
+- Added OpenAI-style high-level convenience helpers for text, chat and
+  embeddings with token accounting.
+- Added the `server_lfm` example wrapper and an `lfm-text` download
+  target for launching the HTTP server with LFM text models.
+- Added the `streaming` example to demonstrate callback-driven text
+  generation.
+- Added mobile-oriented runtime presets through `MobilePreset` and
+  `LlamaParams::with_mobile_preset`.
+- Added broader tool-call streaming support, including OpenAI-style
+  tool-call deltas.
+- Added documentation deployment for the project guide.
+
+### Changed
+
+- Migrated the user guide from mdBook to Material for MkDocs, with
+  English and Portuguese documentation trees and expanded server,
+  mobile, streaming, chat, embeddings and grammar coverage.
+- README files now point users to the new MkDocs guide hosted at the
+  GitHub Pages site.
+- CI and release workflows now build, test and publish
+  `llama-crab-server` alongside the library crates.
+- CI workflows now run through manual dispatch instead of push triggers,
+  and documentation jobs use nightly Cargo where required.
+- The `hf-tokenizer` dependency now enables the `onig` feature for
+  tokenizer compatibility.
+- Rustdoc crate logos now reference the current Canarim Crab asset.
+
+### Fixed
+
+- Removed unused placeholder OpenAI-compat wrapper bindings from
+  `llama-crab-sys` and the old chat module export.
+- Gated the Metal backend build configuration to macOS targets.
+- Hardened documentation builds and docs deployment workflow behavior.
+- Cleaned up server and example runner support for the new server and
+  mobile workflows.
+
+## [0.1.201] - 2026-06-13
+
+### Changed
+
+- Prepared the `0.1.201` release after the `0.1.2` documentation and
+  runtime fixes.
+- CI feature matrices now align with the actual crate feature set.
+- Coverage workflow scope now matches the published crate layout.
+
+### Fixed
+
+- CI now installs Vulkan shader dependencies, including the shader
+  compiler required by Vulkan-enabled builds.
+- Removed redundant casts from the vision CI tests.
+
 ## [0.1.2] - 2026-06-13
 
 ### Added
@@ -95,7 +158,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Module layout matches `PLAN.md` exactly**. Sub-modules added:
   - `src/sampling/{strategies,grammar,chain,custom}.rs`
   - `src/multimodal/{context,bitmap,chunks}.rs`
-  - `src/chat/{parser,template,tool_call,message,oaicompat}.rs`
+  - `src/chat/{parser,template,tool_call,message}.rs`
   - `src/model/{kv_overrides,buft_overrides,vocab,params}.rs`
   - `src/context/{embeddings,kv_cache,session,sampling_state,params}.rs`
   - `src/high_level/{completion,chat_completion,embedding,rerank,infill,tokenizer,hf_tokenizer}.rs`
@@ -111,7 +174,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New `LlamaContext::logits_ith`, `sampled_token_ith`, `sampled_probs_ith`
   (sampling-state introspection).
 - `chat::parser::ChatParseState` — incremental JSON-object parser
-  used by streaming OAI-compat clients.
+  used by streaming clients.
 - `high_level::embedding::Llama::embed(text, normalize)` — convenience
   helper around the encode + extract_embeddings pipeline.
 - `high_level::rerank::Llama::rerank(query, docs)` — cross-encoder
@@ -169,7 +232,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 9 example crates and 3 integration tests covering Gemma 4 and
   LFM2.5-VL.
 
-[Unreleased]: https://github.com/DominguesM/llama-crab/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/DominguesM/llama-crab/compare/v0.1.300...HEAD
+[0.1.300]: https://github.com/DominguesM/llama-crab/compare/v0.1.201...v0.1.300
+[0.1.201]: https://github.com/DominguesM/llama-crab/compare/v0.1.2...v0.1.201
 [0.1.2]: https://github.com/DominguesM/llama-crab/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/DominguesM/llama-crab/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/DominguesM/llama-crab/releases/tag/v0.1.0

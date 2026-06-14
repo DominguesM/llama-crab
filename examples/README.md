@@ -16,7 +16,12 @@ required by the example (if missing) and then builds + runs it:
 ./examples/run.sh embedding_search      # BGE-small + cosine ranking
 ./examples/run.sh vision gemma4         # Gemma 4 text + image
 ./examples/run.sh vision lfm-vl         # LFM2.5-VL 1.6B text + image
+./examples/run.sh lfm_vl                # REPL against the LFM VL model
+./examples/run.sh server_lfm            # llama-crab-server w/ LFM2.5-VL
+./examples/run.sh multimodal_http       # mtmd-enabled HTTP chat server
+./examples/run.sh rerank                # HTTP reranking server
 ./examples/run.sh tools                 # function-calling demo
+./examples/run.sh tool_calls_qwen       # Qwen tool-call demo alias
 ./examples/run.sh structured            # JSON-schema grammar
 ```
 
@@ -32,18 +37,21 @@ examples/
 ├── README.md                    # this file
 │
 ├── quickstart/                  # smallest end-to-end demo (text only)
+├── streaming/                   # high-level token-by-token output
 ├── stateful_chat/               # interactive multi-turn chat REPL
 ├── embedding_search/            # cosine-similarity semantic search
 │
 ├── simple/                      # one-shot text completion
 ├── chat/                        # one-shot chat completion
 ├── embeddings/                  # raw embedding extraction
-├── reranker/                    # cross-encoder scoring
+├── reranker/                    # embedding-based ranking demo
 ├── speculative/                 # speculative decoding
 ├── tools/                       # function-calling + tool parser
 ├── structured/                  # JSON-schema constrained decoding
 ├── mtmd/                        # multimodal (vision) via mtmd.h
-└── vision/                      # vision via the high-level API
+├── vision/                      # vision via the high-level API
+├── lfm_vl_vision/               # LFM2.5-VL multimodal REPL
+└── server_lfm/                  # llama-crab-server wired for LFM2.5-VL
 ```
 
 ## Per-example guide
@@ -51,17 +59,22 @@ examples/
 | Example              | Model                                  | Size  | What it shows |
 | -------------------- | -------------------------------------- | ----- | ------------- |
 | `quickstart`         | `Qwen/Qwen2.5-0.5B-Instruct-GGUF`      | ~400 MB | Load → tokenize → complete → chat → FIM |
+| `streaming`          | same as `quickstart`                   | ~400 MB | High-level token-by-token output |
 | `stateful_chat`      | same as `quickstart`                   | ~400 MB | REPL with growing history, `/clear`, `/save` |
 | `embedding_search`   | `CompendiumLabs/bge-small-en-v1.5-gguf` | ~30 MB | L2-normalized embeddings + cosine ranking |
 | `simple`             | any text GGUF                          | varies | Low-level decode loop with custom sampler chain |
 | `chat`               | instruct-tuned GGUF                    | varies | Built-in chat templates + `BuiltinTemplate::ChatML` |
 | `embeddings`         | an embedding GGUF                      | varies | `embed()`, L2 normalize, raw `llama_get_embeddings` |
-| `reranker`           | a reranker GGUF (BGE, Jina, …)         | varies | `rerank()` cross-encoder scoring |
+| `reranker`           | an embedding GGUF                      | varies | embedding cosine ranking |
 | `speculative`        | draft + target GGUF                    | varies | `prompt-lookup` and small-model draft decoding |
 | `tools`              | a tool-aware instruct GGUF             | varies | `ToolDefinition` + 5 `ToolParser` formats |
 | `structured`         | any text GGUF                          | varies | `json_schema_grammar()` + `Sampler::grammar` |
 | `mtmd`               | `lmstudio-community/gemma-4-E4B-it-GGUF` | ~5 GB | Raw `mtmd.h` API: bitmap → chunks → eval |
 | `vision`             | same model (or `LFM2.5-VL-1.6B`)       | ~5 GB | High-level `MtmdContext` API |
+| `lfm_vl`             | `unsloth/LFM2.5-VL-1.6B-GGUF`          | ~1 GB | LFM2.5-VL 1.6B multimodal REPL |
+| `server_lfm`         | `unsloth/LFM2.5-VL-1.6B-GGUF`          | ~1 GB | Boots `llama-crab-server` pre-wired for LFM2.5-VL |
+| `multimodal_http`    | same as `server_lfm`                   | ~1 GB | Boots `llama-crab-server --features mtmd -- --mmproj ...` |
+| `rerank`             | `turingevo/bge-reranker-base-Q4_K_M-GGUF` | varies | Boots `llama-crab-server --reranking --pooling rank` |
 
 The two vision examples both need a vision-language GGUF **and** its
 `mmproj-*.gguf` projector file. `download_models.sh` downloads both.
@@ -81,10 +94,12 @@ You can replicate the same steps manually:
 ./scripts/download_models.sh smol        # text-only models
 ./scripts/download_models.sh gemma4      # text + mmproj
 ./scripts/download_models.sh bge         # embeddings
+./scripts/download_models.sh bge-reranker # rerank server
 ./scripts/download_models.sh test-image  # synthetic PNG fixture
 
 # 2. Run the example.
 cargo run --release --bin run_quickstart
+cargo run --release --bin run_streaming
 cargo run --release --bin run_chat
 cargo run --release --bin run_embeddings
 ```
@@ -98,6 +113,7 @@ the full list):
 | `gemma4`      | `lmstudio-community/gemma-4-E4B-it-GGUF`        | 1 × text GGUF + 1 × mmproj GGUF |
 | `lfm-vl`      | `unsloth/LFM2.5-VL-1.6B-GGUF`                   | 1 × text GGUF + 1 × mmproj GGUF |
 | `bge`         | `CompendiumLabs/bge-small-en-v1.5-gguf`         | 1 × GGUF |
+| `bge-reranker` | `turingevo/bge-reranker-base-Q4_K_M-GGUF`      | 1 × GGUF |
 | `test-image`  | (synthetic, no download)                        | `tests/fixtures/test_image.png` |
 | `all`         | everything                                      | ~7 GB total |
 

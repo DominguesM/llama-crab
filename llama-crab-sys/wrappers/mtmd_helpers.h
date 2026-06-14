@@ -1,4 +1,5 @@
-// Multimodal (mtmd) helper bridge.
+// Reserved multimodal (mtmd) helper bridge. Upstream mtmd_* and mtmd_helper_*
+// symbols are exposed directly; this local llama_rs_* helper is not.
 
 #pragma once
 
@@ -9,8 +10,7 @@
 extern "C" {
 #endif
 
-// v0.1 stub. Reserved for future C++ helpers that wrap mtmd APIs not
-// directly accessible from bindgen.
+// v0.1.300 placeholder. Returns non-zero if compiled directly.
 int llama_rs_mtmd_init_helpers(void);
 
 #ifdef __cplusplus

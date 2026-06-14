@@ -12,7 +12,7 @@
 //! ```
 
 #![doc(
-    html_logo_url = "https://raw.githubusercontent.com/DominguesM/llama-crab/main/docs/src/assets/logo.png"
+    html_logo_url = "https://gist.githubusercontent.com/DominguesM/127b9e5614e0e2da6b896fb3da3c8f2d/raw/a42e6daa629eb6f0254de026c47da9aff3c1f0e2/canarim-crab.webp"
 )]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![allow(clippy::needless_doctest_main)]
@@ -56,9 +56,12 @@ pub use crate::chat::Role;
 pub use crate::context::{LlamaContext, LlamaContextParams};
 pub use crate::error::{LlamaError, Result};
 pub use crate::high_level::chat_completion::ChatMessage;
-pub use crate::high_level::completion::{Completion, StopReason};
+pub use crate::high_level::completion::{
+    Completion, CompletionChunk, CompletionLogprobs, CompletionOptions, StopReason, StreamControl,
+    TokenLogprob,
+};
 pub use crate::high_level::tokenizer::{FimTokens, LlamaTokenizer, Tokenizer};
-pub use crate::high_level::{Llama, LlamaParams};
+pub use crate::high_level::{Llama, LlamaParams, MobilePreset};
 pub use crate::log::{send_logs_to_tracing, LogOptions};
 pub use crate::logit_bias::LlamaLogitBias;
 pub use crate::model::{params::LlamaModelParams, LlamaModel};

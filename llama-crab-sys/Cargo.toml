@@ -49,7 +49,7 @@ walkdir = "2"
 
 [features]
 default = ["openmp", "metal"]
-# C++ `common` library — needed for chat templates, oaicompat, json schema
+# C++ `common` library used by chat templates and JSON schema helpers.
 common = []
 # GPU backends
 cuda = []
@@ -57,7 +57,9 @@ cuda-no-vmm = ["cuda"]
 metal = []
 vulkan = []
 rocm = []
+opencl = []
 openmp = []
+kleidiai = []
 # Linking modes
 dynamic-link = []
 shared-stdcxx = []

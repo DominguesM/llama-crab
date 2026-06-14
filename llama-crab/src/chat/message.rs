@@ -1,6 +1,6 @@
 //! [`ChatMessage`] and [`Role`] types.
 
-/// Role of a chat message in an OpenAI-style conversation.
+/// Role of a chat message in a multi-turn conversation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Role {
     /// System prompt.

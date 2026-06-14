@@ -3,7 +3,7 @@
 //! Responsibilities (in order):
 //! 1. Detect host platform, target architecture and supported backends.
 //! 2. Configure CMake build of `llama.cpp` (`LLAMA_BUILD_TESTS=OFF`, etc.).
-//! 3. Compile additional C++ wrappers (chat templates, JSON schema, multimodal).
+//! 3. Compile additional C++ wrappers only when they are backed by upstream code.
 //! 4. Run `bindgen` over `wrapper.h` to generate Rust FFI bindings.
 //! 5. Emit `cargo:` directives to wire up include dirs, lib paths and link flags.
 //!
@@ -74,7 +74,9 @@ struct Features {
     metal: bool,
     vulkan: bool,
     rocm: bool,
+    opencl: bool,
     openmp: bool,
+    kleidiai: bool,
     dynamic_link: bool,
     dynamic_backends: bool,
     system_ggml: bool,
@@ -94,7 +96,9 @@ impl Features {
             metal: env_feature("METAL"),
             vulkan: env_feature("VULKAN"),
             rocm: env_feature("ROCM"),
+            opencl: env_feature("OPENCL"),
             openmp: env_feature("OPENMP"),
+            kleidiai: env_feature("KLEIDIAI"),
             dynamic_link: env_feature("DYNAMIC_LINK"),
             dynamic_backends: env_feature("DYNAMIC_BACKENDS"),
             system_ggml: env_feature("SYSTEM_GGML"),
@@ -121,6 +125,10 @@ fn main() {
     let features = Features::from_env();
     let os = TargetOs::from_env();
 
+    if features.shared_stdcxx && features.static_stdcxx {
+        panic!("features 'shared-stdcxx' and 'static-stdcxx' are mutually exclusive");
+    }
+
     // Trigger a rebuild whenever the wrapper headers, our own build.rs or any
     // tracked llama.cpp source file changes.
     watch_sources(&manifest_dir);
@@ -137,7 +145,7 @@ fn main() {
         build_llama_cpp(&manifest_dir, &out_dir, &features, os)
     };
 
-    // 3. Compile the C++ wrapper objects (chat, oaicompat, mtmd helpers).
+    // 3. Compile the C++ wrapper objects that are backed by upstream code.
     if !features.dynamic_link {
         build_cpp_wrappers(&manifest_dir, &out_dir, &features);
     }
@@ -221,10 +229,7 @@ fn run_bindgen(manifest_dir: &PathBuf, features: &Features) -> bindgen::Bindings
         .clang_arg("-DGGML_BACKEND_DL_DISABLE");
 
     if features.common {
-        builder = builder
-            .clang_arg(format!("-I{}", llcpp.join("common").display()))
-            .allowlist_function("llama_rs_.*")
-            .allowlist_type("llama_rs_.*");
+        builder = builder.clang_arg(format!("-I{}", llcpp.join("common").display()));
     }
 
     if features.mtmd {
@@ -235,19 +240,28 @@ fn run_bindgen(manifest_dir: &PathBuf, features: &Features) -> bindgen::Bindings
             .clang_arg(format!("-I{}", llcpp.join("vendor").display()))
             .allowlist_function("mtmd_.*")
             .allowlist_function("mtmd_helper_.*")
+            .blocklist_function("mtmd_helper_video_.*")
             .allowlist_type("mtmd_.*")
             .allowlist_type("mtmd_input_chunk_type")
             // Block C++ standard-library templates that bindgen can't express.
             .blocklist_type("std___1__.*")
             .blocklist_type("_Pointer")
+            .blocklist_type("mtmd_helper::.*")
+            .blocklist_type("mtmd_helper_mtmd_helper_video_deleter")
+            .blocklist_type("mtmd_helper_video_ptr")
+            .blocklist_item("mtmd_helper::.*")
+            .blocklist_item("mtmd_helper_mtmd_helper_video_deleter")
+            .blocklist_item("mtmd_helper_video_ptr")
             .opaque_type("std::.*");
     }
 
     if features.llguidance {
-        // llguidance is wired via a custom C-ABI vtable; we only need a stub.
-        builder = builder
-            .clang_arg("-DLLGUIDANCE_ENABLED")
-            .allowlist_function("llg_.*");
+        // Do not expose the local llguidance registration shim until it is
+        // backed by the upstream llguidance library. The feature is accepted
+        // for building with llguidance, but no llg_* surface is published here.
+        eprintln!(
+            "cargo:warning=llama-crab-sys: llguidance feature has no C-ABI surface in v0.1.300"
+        );
     }
 
     if cfg!(target_os = "macos") {
@@ -334,10 +348,29 @@ fn build_llama_cpp(
     } else {
         dst.define("GGML_CUDA", "OFF");
     }
-    dst.define("GGML_METAL", if features.metal { "ON" } else { "OFF" });
+    dst.define(
+        "GGML_METAL",
+        if features.metal && os == TargetOs::Macos {
+            "ON"
+        } else {
+            "OFF"
+        },
+    );
     dst.define("GGML_VULKAN", if features.vulkan { "ON" } else { "OFF" });
     dst.define("GGML_HIP", if features.rocm { "ON" } else { "OFF" });
+    dst.define("GGML_OPENCL", if features.opencl { "ON" } else { "OFF" });
     dst.define("GGML_OPENMP", if features.openmp { "ON" } else { "OFF" });
+    dst.define(
+        "GGML_CPU_KLEIDIAI",
+        if features.kleidiai { "ON" } else { "OFF" },
+    );
+    define_optional_env(&mut dst, "OPENCL_HEADERS_DIR", "OpenCL_INCLUDE_DIRS");
+    define_optional_env(
+        &mut dst,
+        "OPENCL_ICD_LOADER_HEADERS_DIR",
+        "OPENCL_ICD_LOADER_HEADERS_DIR",
+    );
+    define_optional_env(&mut dst, "OpenCL_LIBRARY", "OpenCL_LIBRARY");
     dst.define(
         "GGML_BACKEND_DL",
         if features.dynamic_backends {
@@ -365,6 +398,15 @@ fn build_llama_cpp(
     discover_libs(&install)
 }
 
+fn define_optional_env(dst: &mut Config, env_name: &str, cmake_name: &str) {
+    println!("cargo:rerun-if-env-changed={env_name}");
+    if let Ok(value) = env::var(env_name) {
+        if !value.is_empty() {
+            dst.define(cmake_name, value);
+        }
+    }
+}
+
 fn profile_to_cmake(p: &str) -> &'static str {
     match p {
         "debug" => "Debug",
@@ -375,8 +417,7 @@ fn profile_to_cmake(p: &str) -> &'static str {
 }
 
 fn detect_cpu_features(dst: &mut Config, cpu: &str) {
-    // Mapping from Rust `target-cpu` values to the GGML compile flags.
-    // This is a simplified subset of the table in llama-cpp-rs/llama-cpp-sys-2/build.rs.
+    // Mapping from Rust `target-cpu` values to GGML compile flags.
     let defines: &[(&str, &[&str])] = &[
         ("x86_64", &[]),
         ("sandybridge", &["GGML_SSE42", "GGML_AVX"]),
@@ -487,7 +528,7 @@ fn discover_libs(install: &PathBuf) -> Vec<PathBuf> {
 }
 
 // ---------------------------------------------------------------------------
-// C++ wrapper compilation (chat templates, oaicompat, mtmd helpers, llguidance)
+// C++ wrapper compilation
 // ---------------------------------------------------------------------------
 
 fn build_cpp_wrappers(manifest_dir: &PathBuf, out_dir: &PathBuf, features: &Features) {
@@ -516,23 +557,11 @@ fn build_cpp_wrappers(manifest_dir: &PathBuf, out_dir: &PathBuf, features: &Feat
         file_count += 1;
     }
     if features.common {
-        let oai = manifest_dir.join("wrappers/oaicompat.cpp");
-        if oai.is_file() {
-            build.file(oai);
-            file_count += 1;
-        }
-        let grammar = manifest_dir.join("wrappers/grammar.cpp");
-        if grammar.is_file() {
-            build.file(grammar);
-            file_count += 1;
-        }
+        // v0.1.300 intentionally does not compile local llama_rs_* common
+        // shims. They were placeholders and could report success without
+        // invoking the real upstream common implementation.
     }
     if features.mtmd {
-        let path = manifest_dir.join("wrappers/mtmd_helpers.cpp");
-        if path.is_file() {
-            build.file(path);
-            file_count += 1;
-        }
         // The mtmd library itself (a C++ source tree under `tools/mtmd`).
         // We add its sources directly via `cc::Build` (the parent CMake build
         // skips it because `LLAMA_BUILD_TOOLS=OFF`).
@@ -567,11 +596,8 @@ fn build_cpp_wrappers(manifest_dir: &PathBuf, out_dir: &PathBuf, features: &Feat
         }
     }
     if features.llguidance {
-        let path = manifest_dir.join("wrappers/llguidance_vtable.cpp");
-        if path.is_file() {
-            build.file(path);
-            file_count += 1;
-        }
+        // No local llguidance vtable shim is compiled until registration is
+        // wired to a real upstream implementation.
     }
 
     if file_count > 0 {
@@ -629,6 +655,8 @@ fn emit_link_directives(
             "ggml-base",
             "ggml-blas",
             "ggml-metal",
+            "ggml-vulkan",
+            "ggml-opencl",
             "common",
             "mtmd",
         ] {
@@ -694,6 +722,16 @@ fn emit_link_directives(
             println!("cargo:rustc-link-lib=vulkan-1");
         } else {
             println!("cargo:rustc-link-lib=vulkan");
+        }
+    }
+    if features.opencl {
+        match os {
+            TargetOs::Macos => println!("cargo:rustc-link-lib=framework=OpenCL"),
+            TargetOs::WindowsMsvc => println!("cargo:rustc-link-lib=OpenCL"),
+            TargetOs::WindowsGnu | TargetOs::Linux | TargetOs::Android => {
+                println!("cargo:rustc-link-lib=OpenCL");
+            }
+            TargetOs::Other => {}
         }
     }
 

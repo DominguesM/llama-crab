@@ -2,7 +2,7 @@
 //!
 //! All 17 sampling strategies exposed by `llama.cpp` are available as
 //! associated functions on [`LlamaSampler`]. Use [`LlamaSampler::chain`] to
-//! compose them into a pipeline (matching `llama-cpp-python`'s `LlamaSampler`).
+//! compose them into a pipeline.
 //!
 //! At the top level you find the [`LlamaSampler`] wrapper itself and its
 //! core methods (`sample`, `apply`, `accept`, `reset`, `get_seed`), plus

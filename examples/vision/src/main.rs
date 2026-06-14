@@ -99,7 +99,7 @@ fn main() -> Result<()> {
         n_generated += 1;
     }
     eprintln!();
-    println!("assistant> {}", out);
+    println!("assistant> {out}");
     eprintln!(
         "\n(generated in {} tokens, {:?})",
         n_generated,

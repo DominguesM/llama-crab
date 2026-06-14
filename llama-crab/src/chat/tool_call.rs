@@ -42,7 +42,7 @@ impl ToolDefinition {
         self
     }
 
-    /// JSON-Schema style: serialize to OpenAI's `tools[].function` shape.
+    /// Serialize to a function-tool JSON shape.
     #[must_use]
     pub fn to_openai_function(&self) -> Value {
         json!({
@@ -205,6 +205,29 @@ impl ToolParser {
             self.feed_char(c, &mut out);
         }
         out
+    }
+
+    /// True if a tool call body is currently being assembled.
+    ///
+    /// Streaming consumers can use this together with [`Self::current_partial`]
+    /// to emit argument deltas as the model produces them.
+    #[must_use]
+    pub fn in_call(&self) -> bool {
+        self.in_call
+    }
+
+    /// Current partial JSON of the in-progress tool call.
+    ///
+    /// Only meaningful when [`Self::in_call`] is `true`. Returns `None`
+    /// outside a call. The returned string grows monotonically until the
+    /// call completes (or the parser transitions out of `in_call`).
+    #[must_use]
+    pub fn current_partial(&self) -> Option<&str> {
+        if self.in_call {
+            Some(self.buffer.as_str())
+        } else {
+            None
+        }
     }
 
     fn feed_char(&mut self, c: char, out: &mut Vec<Result<ToolCall, ToolParseError>>) {
@@ -380,6 +403,559 @@ pub fn extract_tool_calls(format: ToolFormat, text: &str) -> Vec<Result<ToolCall
     p.feed(text)
 }
 
+/// One per-tool-call delta emitted while streaming model output.
+///
+/// Each `ToolCallDelta` carries a single `index` (assigned in the order
+/// the calls start) and at most one of: a fresh `id`, a `name`, an
+/// `arguments` diff, or a `completed` final value.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToolCallDelta {
+    /// Index of the call this delta refers to.
+    pub index: usize,
+    /// Fresh id; set only on the first delta for a call.
+    pub id: Option<String>,
+    /// Tool name; emitted once it is observable in the partial JSON.
+    pub name: Option<String>,
+    /// Incremental argument JSON; only the freshly seen suffix.
+    pub arguments: Option<String>,
+    /// Set on the final delta for a call (carries the full parsed result).
+    pub completed: Option<ToolCall>,
+}
+
+/// Streaming wrapper around [`ToolParser`] that emits OpenAI-style
+/// `tool_calls` deltas.
+#[derive(Debug)]
+pub struct ToolCallStream {
+    parser: ToolParser,
+    next_index: usize,
+    /// State for the call currently being built (if any).
+    active: Option<ActiveStreamCall>,
+    /// Whether the most recent transition was into a new call.
+    just_started: bool,
+}
+
+#[derive(Debug)]
+struct ActiveStreamCall {
+    index: usize,
+    id: String,
+    name: Option<String>,
+    name_emitted: bool,
+    /// The arguments string already emitted as a delta.
+    args_emitted: String,
+    /// Byte offset of the `arguments` value in `partial_seen`, once
+    /// the `"arguments"` key has been seen in the partial JSON.
+    args_value_start: Option<usize>,
+}
+
+impl ToolCallStream {
+    /// Construct a stream for the given format.
+    #[must_use]
+    pub fn new(format: ToolFormat) -> Self {
+        Self {
+            parser: ToolParser::new(format),
+            next_index: 0,
+            active: None,
+            just_started: false,
+        }
+    }
+
+    /// Construct from a chat-format name.
+    #[must_use]
+    pub fn for_chat_format(name: &str) -> Self {
+        Self::new(ToolFormat::from_chat_format(name))
+    }
+
+    /// Number of completed calls so far.
+    #[must_use]
+    pub fn completed_count(&self) -> usize {
+        self.next_index
+            .saturating_sub(usize::from(self.active.is_some()))
+    }
+
+    /// True if a tool-call body is currently being assembled.
+    ///
+    /// Consumers can use this to suppress content chunks while a
+    /// tool call's arguments are being parsed out of the model output.
+    #[must_use]
+    pub fn in_call(&self) -> bool {
+        self.parser.in_call()
+    }
+
+    /// Feed a chunk of model output; return the deltas to emit.
+    pub fn feed(&mut self, chunk: &str) -> Vec<ToolCallDelta> {
+        let was_in_call = self.parser.in_call();
+        let completed = self.parser.feed(chunk);
+        let now_in_call = self.parser.in_call();
+        let mut out = Vec::new();
+
+        // 1. Handle calls completed during this feed.
+        for call in completed {
+            let call = match call {
+                Ok(c) => c,
+                Err(err) => {
+                    // Surface as a delta with a synthetic id so the client
+                    // sees the error attached to a specific index.
+                    let index = if let Some(a) = self.active.take() {
+                        a.index
+                    } else {
+                        let idx = self.next_index;
+                        self.next_index += 1;
+                        idx
+                    };
+                    out.push(ToolCallDelta {
+                        index,
+                        id: None,
+                        name: None,
+                        arguments: None,
+                        completed: Some(ToolCall::new(
+                            format!("call_err_{index}"),
+                            String::new(),
+                            serde_json::Value::String(err.to_string()),
+                        )),
+                    });
+                    continue;
+                }
+            };
+
+            // Promote the active call to completed.
+            let index = if let Some(a) = self.active.take() {
+                a.index
+            } else {
+                let idx = self.next_index;
+                self.next_index += 1;
+                idx
+            };
+            out.push(ToolCallDelta {
+                index,
+                id: None,
+                name: None,
+                arguments: None,
+                completed: Some(call),
+            });
+        }
+
+        // 2. Detect a fresh call start (transition !in_call -> in_call).
+        if !was_in_call && now_in_call {
+            self.just_started = true;
+        }
+
+        // 3. If we just started a call, emit the id delta.
+        if self.just_started {
+            self.just_started = false;
+            let index = self.next_index;
+            self.next_index += 1;
+            let id = format!("call_{index}");
+            self.active = Some(ActiveStreamCall {
+                index,
+                id: id.clone(),
+                name: None,
+                name_emitted: false,
+                args_emitted: String::new(),
+                args_value_start: None,
+            });
+            out.push(ToolCallDelta {
+                index,
+                id: Some(id),
+                name: None,
+                arguments: None,
+                completed: None,
+            });
+        }
+
+        // 4. Stream the current partial JSON.
+        if let Some(active) = self.active.as_mut() {
+            if let Some(partial) = self.parser.current_partial() {
+                // Detect `name` field in the partial (top-level only).
+                if !active.name_emitted {
+                    if let Some(name) = extract_top_level_name(partial) {
+                        active.name = Some(name.clone());
+                        active.name_emitted = true;
+                        out.push(ToolCallDelta {
+                            index: active.index,
+                            id: None,
+                            name: Some(name),
+                            arguments: None,
+                            completed: None,
+                        });
+                    }
+                }
+                // Detect `arguments` value range.
+                if active.args_value_start.is_none() {
+                    if let Some(start) = extract_top_level_value_start(partial, "arguments") {
+                        active.args_value_start = Some(start);
+                    }
+                }
+                // Emit the arguments diff.
+                if let Some(start) = active.args_value_start {
+                    let value_end = value_end_offset(partial, start);
+                    if value_end > active.args_emitted.len() {
+                        let diff =
+                            partial[start + active.args_emitted.len()..value_end].to_string();
+                        active.args_emitted.push_str(&diff);
+                        out.push(ToolCallDelta {
+                            index: active.index,
+                            id: None,
+                            name: None,
+                            arguments: Some(diff),
+                            completed: None,
+                        });
+                    }
+                }
+            }
+        }
+
+        out
+    }
+
+    /// Flush any remaining buffered content (call at end-of-stream).
+    pub fn finish(&mut self) -> Vec<ToolCallDelta> {
+        let mut out = Vec::new();
+        let final_completed = self.parser.finish();
+        for call in final_completed {
+            let call = match call {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+            let index = if let Some(a) = self.active.take() {
+                a.index
+            } else {
+                let idx = self.next_index;
+                self.next_index += 1;
+                idx
+            };
+            out.push(ToolCallDelta {
+                index,
+                id: None,
+                name: None,
+                arguments: None,
+                completed: Some(call),
+            });
+        }
+        out
+    }
+}
+
+/// Extract a top-level `"name": "..."` value from a partial JSON object
+/// being built up character-by-character.
+///
+/// Returns `None` while the value is still being built (incomplete
+/// string, missing colon, missing opening quote, etc.).
+fn extract_top_level_name(partial: &str) -> Option<String> {
+    // Find the first `"name"` key at the top level.
+    let bytes = partial.as_bytes();
+    let mut i = 0;
+    // Skip leading whitespace.
+    while i < bytes.len() && (bytes[i] as char).is_whitespace() {
+        i += 1;
+    }
+    if i >= bytes.len() || bytes[i] != b'{' {
+        return None;
+    }
+    i += 1;
+    while i < bytes.len() {
+        // Skip whitespace.
+        while i < bytes.len() && (bytes[i] as char).is_whitespace() {
+            i += 1;
+        }
+        if i >= bytes.len() {
+            return None;
+        }
+        if bytes[i] == b'}' {
+            return None;
+        }
+        // Expect `"`.
+        if bytes[i] != b'"' {
+            return None;
+        }
+        i += 1;
+        // Read key.
+        let key_start = i;
+        while i < bytes.len() && bytes[i] != b'"' {
+            if bytes[i] == b'\\' && i + 1 < bytes.len() {
+                i += 2;
+            } else {
+                i += 1;
+            }
+        }
+        if i >= bytes.len() {
+            return None;
+        }
+        let key = &partial[key_start..i];
+        i += 1; // skip closing `"`
+                // Skip whitespace.
+        while i < bytes.len() && (bytes[i] as char).is_whitespace() {
+            i += 1;
+        }
+        if i >= bytes.len() || bytes[i] != b':' {
+            return None;
+        }
+        i += 1;
+        // Skip whitespace.
+        while i < bytes.len() && (bytes[i] as char).is_whitespace() {
+            i += 1;
+        }
+        if key == "name" {
+            if i >= bytes.len() || bytes[i] != b'"' {
+                return None;
+            }
+            i += 1;
+            let mut val = String::new();
+            while i < bytes.len() {
+                let c = bytes[i];
+                if c == b'"' {
+                    return Some(val);
+                }
+                if c == b'\\' && i + 1 < bytes.len() {
+                    val.push(bytes[i + 1] as char);
+                    i += 2;
+                } else {
+                    val.push(c as char);
+                    i += 1;
+                }
+            }
+            return None;
+        } else {
+            if i >= bytes.len() {
+                return None;
+            }
+            match bytes[i] {
+                b'{' | b'[' => {
+                    let open = bytes[i];
+                    let close = if open == b'{' { b'}' } else { b']' };
+                    let mut depth = 1_i32;
+                    i += 1;
+                    while i < bytes.len() && depth > 0 {
+                        if bytes[i] == b'"' {
+                            i += 1;
+                            while i < bytes.len() && bytes[i] != b'"' {
+                                if bytes[i] == b'\\' && i + 1 < bytes.len() {
+                                    i += 2;
+                                } else {
+                                    i += 1;
+                                }
+                            }
+                            if i < bytes.len() {
+                                i += 1;
+                            }
+                        } else if bytes[i] == open {
+                            depth += 1;
+                            i += 1;
+                        } else if bytes[i] == close {
+                            depth -= 1;
+                            i += 1;
+                        } else {
+                            i += 1;
+                        }
+                    }
+                    if depth > 0 {
+                        return None;
+                    }
+                }
+                b'"' => {
+                    i += 1;
+                    while i < bytes.len() && bytes[i] != b'"' {
+                        if bytes[i] == b'\\' && i + 1 < bytes.len() {
+                            i += 2;
+                        } else {
+                            i += 1;
+                        }
+                    }
+                    if i < bytes.len() {
+                        i += 1;
+                    }
+                }
+                _ => {
+                    while i < bytes.len() && bytes[i] != b',' && bytes[i] != b'}' {
+                        i += 1;
+                    }
+                }
+            }
+            if i < bytes.len() && bytes[i] == b',' {
+                i += 1;
+            }
+        }
+    }
+    None
+}
+
+/// Find the byte offset in `partial` where the top-level value of the
+/// key `target_key` starts (i.e. just after the colon and any whitespace).
+fn extract_top_level_value_start(partial: &str, target_key: &str) -> Option<usize> {
+    let bytes = partial.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() && (bytes[i] as char).is_whitespace() {
+        i += 1;
+    }
+    if i >= bytes.len() || bytes[i] != b'{' {
+        return None;
+    }
+    i += 1;
+    while i < bytes.len() {
+        while i < bytes.len() && (bytes[i] as char).is_whitespace() {
+            i += 1;
+        }
+        if i >= bytes.len() || bytes[i] == b'}' {
+            return None;
+        }
+        if bytes[i] != b'"' {
+            return None;
+        }
+        i += 1;
+        let key_start = i;
+        while i < bytes.len() && bytes[i] != b'"' {
+            if bytes[i] == b'\\' && i + 1 < bytes.len() {
+                i += 2;
+            } else {
+                i += 1;
+            }
+        }
+        if i >= bytes.len() {
+            return None;
+        }
+        let key = &partial[key_start..i];
+        i += 1;
+        while i < bytes.len() && (bytes[i] as char).is_whitespace() {
+            i += 1;
+        }
+        if i >= bytes.len() || bytes[i] != b':' {
+            return None;
+        }
+        i += 1;
+        while i < bytes.len() && (bytes[i] as char).is_whitespace() {
+            i += 1;
+        }
+        if key == target_key {
+            return Some(i);
+        }
+        if i >= bytes.len() {
+            return None;
+        }
+        match bytes[i] {
+            b'{' | b'[' => {
+                let open = bytes[i];
+                let close = if open == b'{' { b'}' } else { b']' };
+                let mut depth = 1_i32;
+                i += 1;
+                while i < bytes.len() && depth > 0 {
+                    if bytes[i] == b'"' {
+                        i += 1;
+                        while i < bytes.len() && bytes[i] != b'"' {
+                            if bytes[i] == b'\\' && i + 1 < bytes.len() {
+                                i += 2;
+                            } else {
+                                i += 1;
+                            }
+                        }
+                        if i < bytes.len() {
+                            i += 1;
+                        }
+                    } else if bytes[i] == open {
+                        depth += 1;
+                        i += 1;
+                    } else if bytes[i] == close {
+                        depth -= 1;
+                        i += 1;
+                    } else {
+                        i += 1;
+                    }
+                }
+                if depth > 0 {
+                    return None;
+                }
+            }
+            b'"' => {
+                i += 1;
+                while i < bytes.len() && bytes[i] != b'"' {
+                    if bytes[i] == b'\\' && i + 1 < bytes.len() {
+                        i += 2;
+                    } else {
+                        i += 1;
+                    }
+                }
+                if i < bytes.len() {
+                    i += 1;
+                }
+            }
+            _ => {
+                while i < bytes.len() && bytes[i] != b',' && bytes[i] != b'}' {
+                    i += 1;
+                }
+            }
+        }
+        if i < bytes.len() && bytes[i] == b',' {
+            i += 1;
+        }
+    }
+    None
+}
+
+/// Given a `partial` JSON and the byte offset where a top-level value
+/// starts, return the byte offset where the value ends (exclusive).
+fn value_end_offset(partial: &str, start: usize) -> usize {
+    let bytes = partial.as_bytes();
+    if start >= bytes.len() {
+        return start;
+    }
+    match bytes[start] {
+        b'{' | b'[' => {
+            let open = bytes[start];
+            let close = if open == b'{' { b'}' } else { b']' };
+            let mut depth = 1_i32;
+            let mut i = start + 1;
+            while i < bytes.len() && depth > 0 {
+                if bytes[i] == b'"' {
+                    i += 1;
+                    while i < bytes.len() && bytes[i] != b'"' {
+                        if bytes[i] == b'\\' && i + 1 < bytes.len() {
+                            i += 2;
+                        } else {
+                            i += 1;
+                        }
+                    }
+                    if i < bytes.len() {
+                        i += 1;
+                    }
+                } else if bytes[i] == open {
+                    depth += 1;
+                    i += 1;
+                } else if bytes[i] == close {
+                    depth -= 1;
+                    i += 1;
+                } else {
+                    i += 1;
+                }
+            }
+            if depth == 0 {
+                i
+            } else {
+                bytes.len()
+            }
+        }
+        b'"' => {
+            let mut i = start + 1;
+            while i < bytes.len() && bytes[i] != b'"' {
+                if bytes[i] == b'\\' && i + 1 < bytes.len() {
+                    i += 2;
+                } else {
+                    i += 1;
+                }
+            }
+            if i < bytes.len() {
+                i + 1
+            } else {
+                bytes.len()
+            }
+        }
+        _ => {
+            let mut i = start;
+            while i < bytes.len() && bytes[i] != b',' && bytes[i] != b'}' {
+                i += 1;
+            }
+            i
+        }
+    }
+}
+
 /// Convenience: turn tool calls into a synthetic assistant message.
 ///
 /// Useful when you want to feed tool calls back into a chat history.
@@ -435,5 +1011,71 @@ mod tests {
         assert_eq!(ToolFormat::from_chat_format("llama-3"), ToolFormat::Llama3);
         assert_eq!(ToolFormat::from_chat_format("mistral"), ToolFormat::Mistral);
         assert_eq!(ToolFormat::from_chat_format("plain"), ToolFormat::Plain);
+    }
+
+    #[test]
+    fn stream_emits_id_then_name_then_arguments_for_chatml() {
+        let mut s = ToolCallStream::new(ToolFormat::ChatMl);
+        let mut all = Vec::new();
+        all.extend(s.feed("<tool_call>"));
+        all.extend(s.feed(r#"{"name":"#));
+        all.extend(s.feed(r#""get_weather""#));
+        all.extend(s.feed(r#","arguments":{"city":"Tokyo"}}"#));
+        all.extend(s.feed("</tool_call>"));
+
+        // First delta: id only, index 0
+        assert_eq!(all[0].index, 0);
+        assert_eq!(all[0].id.as_deref(), Some("call_0"));
+        assert!(all[0].name.is_none());
+        assert!(all[0].arguments.is_none());
+
+        // Find a delta carrying the name.
+        let name_delta = all
+            .iter()
+            .find(|d| d.name.is_some())
+            .expect("expected a name delta");
+        assert_eq!(name_delta.index, 0);
+        assert_eq!(name_delta.name.as_deref(), Some("get_weather"));
+
+        // The final delta carries the completed call.
+        let completed = all
+            .iter()
+            .rev()
+            .find(|d| d.completed.is_some())
+            .expect("expected a completed delta");
+        let call = completed.completed.as_ref().unwrap();
+        assert_eq!(call.name, "get_weather");
+        assert_eq!(call.arguments["city"], "Tokyo");
+    }
+
+    #[test]
+    fn stream_emits_arguments_growth() {
+        let mut s = ToolCallStream::new(ToolFormat::ChatMl);
+        let mut all = Vec::new();
+        for chunk in [
+            "<tool_call>",
+            r#"{"name":"f","arguments":{"#,
+            r#""a":1}"#,
+            "}",
+            "</tool_call>",
+        ] {
+            all.extend(s.feed(chunk));
+        }
+        let arg_diffs: Vec<String> = all.iter().filter_map(|d| d.arguments.clone()).collect();
+        let joined: String = arg_diffs.iter().map(String::as_str).collect();
+        assert_eq!(joined, r#"{"a":1}"#);
+    }
+
+    #[test]
+    fn stream_mistral_array_emits_two_calls() {
+        let mut s = ToolCallStream::new(ToolFormat::Mistral);
+        let mut all = Vec::new();
+        all.extend(s.feed("[TOOL_CALLS]"));
+        all.extend(s.feed(r#"[{"name":"a","arguments":{}},{"name":"b","arguments":{"x":1}}]"#));
+        let completed: Vec<_> = all.iter().filter_map(|d| d.completed.as_ref()).collect();
+        assert_eq!(completed.len(), 2);
+        assert_eq!(completed[0].name, "a");
+        assert_eq!(completed[1].name, "b");
+        assert_eq!(completed[1].arguments["x"], 1);
     }
 }

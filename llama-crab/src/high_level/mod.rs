@@ -1,14 +1,14 @@
 //! High-level orchestrator: load model, create context, generate tokens.
 //!
-//! This module mirrors the public surface of `llama-cpp-python`'s `Llama`
-//! class, but stays 100% safe Rust and uses idiomatic builders instead of
-//! `__init__` parameters.
+//! The API keeps model loading, context ownership and common generation flows
+//! behind one safe Rust type.
 
 pub mod chat_completion;
 pub mod completion;
 pub mod embedding;
 pub mod hf_tokenizer;
 pub mod infill;
+pub mod openai_compat;
 pub mod rerank;
 pub mod tokenizer;
 
@@ -19,6 +19,7 @@ pub use self::hf_tokenizer::HfTokenizer;
 pub use self::tokenizer::{FimTokens, LlamaTokenizer, Tokenizer};
 
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use crate::backend::LlamaBackend;
 use crate::context::{LlamaContext, LlamaContextParams};
@@ -26,8 +27,16 @@ use crate::error::Result;
 use crate::model::params::LlamaModelParams;
 use crate::model::LlamaModel;
 
-pub use self::chat_completion::{create_chat_completion, ChatMessage};
-pub use self::completion::{create_completion, Completion, StopReason};
+pub use self::chat_completion::{
+    create_chat_completion, create_chat_completion_stream, create_chat_completion_stream_with,
+    ChatMessage,
+};
+pub use self::completion::{
+    create_completion, create_completion_stream, create_completion_stream_with_sampler,
+    create_completion_with_options, create_completion_with_sampler, Completion, CompletionChunk,
+    CompletionLogprobs, CompletionOptions, SamplingOptions, StopReason, StreamControl,
+    TokenLogprob,
+};
 
 /// Top-level orchestrator. Owns the backend, the model and the context.
 #[derive(Debug)]
@@ -43,7 +52,7 @@ impl Llama {
     ///
     /// # Errors
     /// Returns an error if the file cannot be loaded, the model is
-    /// incompatible, or context creation fails.
+    /// rejected by llama.cpp, or context creation fails.
     pub fn load(params: LlamaParams) -> Result<Self> {
         let backend = LlamaBackend::init()?;
         let model = LlamaModel::load_from_file(&backend, &params.model_path, &params.model)?;
@@ -78,15 +87,91 @@ impl Llama {
         create_completion(self, prompt, max_tokens)
     }
 
-    /// Synchronous chat completion. The messages are rendered through a
-    /// minimal `role: content\n` template (real chat-template rendering lands
-    /// in v0.2) and the response is decoded token-by-token.
+    /// Synchronous text completion with high-level options.
+    pub fn create_completion_with_options(
+        &mut self,
+        prompt: &str,
+        options: CompletionOptions,
+    ) -> Result<Completion> {
+        create_completion_with_options(self, prompt, options)
+    }
+
+    /// Synchronous text completion using a caller-provided sampler.
+    pub fn create_completion_with_sampler(
+        &mut self,
+        prompt: &str,
+        options: CompletionOptions,
+        sampler: &mut crate::sampling::LlamaSampler,
+    ) -> Result<Completion> {
+        create_completion_with_sampler(self, prompt, options, sampler)
+    }
+
+    /// Synchronous streaming text completion. The callback is invoked as text
+    /// becomes available and can return [`StreamControl::Stop`] to end
+    /// generation.
+    pub fn create_completion_stream<F>(
+        &mut self,
+        prompt: &str,
+        options: CompletionOptions,
+        on_chunk: F,
+    ) -> Result<Completion>
+    where
+        F: FnMut(CompletionChunk) -> StreamControl,
+    {
+        create_completion_stream(self, prompt, options, on_chunk)
+    }
+
+    /// Synchronous streaming text completion using a caller-provided sampler.
+    pub fn create_completion_stream_with_sampler<F>(
+        &mut self,
+        prompt: &str,
+        options: CompletionOptions,
+        sampler: &mut crate::sampling::LlamaSampler,
+        on_chunk: F,
+    ) -> Result<Completion>
+    where
+        F: FnMut(CompletionChunk) -> StreamControl,
+    {
+        create_completion_stream_with_sampler(self, prompt, options, sampler, on_chunk)
+    }
+
+    /// Synchronous chat completion. The messages are rendered with the Plain
+    /// built-in template and the response is decoded token-by-token.
     pub fn create_chat_completion(
         &mut self,
         messages: &[ChatMessage],
         max_tokens: usize,
     ) -> Result<ChatMessage> {
         create_chat_completion(self, messages, max_tokens)
+    }
+
+    /// Synchronous streaming chat completion using the Plain template.
+    pub fn create_chat_completion_stream<F>(
+        &mut self,
+        messages: &[ChatMessage],
+        max_tokens: usize,
+        on_chunk: F,
+    ) -> Result<ChatMessage>
+    where
+        F: FnMut(CompletionChunk) -> StreamControl,
+    {
+        create_chat_completion_stream(self, messages, max_tokens, on_chunk)
+    }
+
+    /// Synchronous streaming chat completion with a chosen built-in template,
+    /// optional tools, and completion options.
+    pub fn create_chat_completion_stream_with<F>(
+        &mut self,
+        messages: &[ChatMessage],
+        template: crate::chat::BuiltinTemplate,
+        tools: &[crate::chat::ToolDefinition],
+        options: CompletionOptions,
+        on_chunk: F,
+    ) -> Result<ChatMessage>
+    where
+        F: FnMut(CompletionChunk) -> StreamControl,
+    {
+        create_chat_completion_stream_with(self, messages, template, tools, options, on_chunk)
     }
 }
 
@@ -99,6 +184,32 @@ pub struct LlamaParams {
     pub model: LlamaModelParams,
     /// Context-side params (n_ctx, embeddings, etc.).
     pub context: LlamaContextParams,
+}
+
+/// High-level mobile-oriented parameter presets.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MobilePreset {
+    /// Small batches and CPU-only execution for memory-constrained devices.
+    LowRam,
+    /// Balanced defaults for interactive mobile chat.
+    Balanced,
+    /// Prefer GPU offload and larger batches for capable devices.
+    GpuMax,
+}
+
+impl FromStr for MobilePreset {
+    type Err = String;
+
+    fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
+        match value {
+            "low-ram" | "low_ram" | "lowram" => Ok(Self::LowRam),
+            "balanced" => Ok(Self::Balanced),
+            "gpu-max" | "gpu_max" | "gpumax" => Ok(Self::GpuMax),
+            other => Err(format!(
+                "unknown mobile preset: {other} (expected low-ram, balanced, or gpu-max)"
+            )),
+        }
+    }
 }
 
 impl LlamaParams {
@@ -140,6 +251,20 @@ impl LlamaParams {
         self
     }
 
+    /// Configure the logical maximum batch size.
+    #[must_use]
+    pub fn with_n_batch(mut self, n: u32) -> Self {
+        self.context = self.context.with_n_batch(n);
+        self
+    }
+
+    /// Configure the physical batch size used by a forward pass.
+    #[must_use]
+    pub fn with_n_ubatch(mut self, n: u32) -> Self {
+        self.context = self.context.with_n_ubatch(n);
+        self
+    }
+
     /// Enable embeddings collection.
     #[must_use]
     pub fn with_embeddings(mut self, yes: bool) -> Self {
@@ -161,11 +286,59 @@ impl LlamaParams {
         self
     }
 
+    /// Enable or disable KQV cache offload to the active GPU backend.
+    #[must_use]
+    pub fn with_offload_kqv(mut self, yes: bool) -> Self {
+        self.context = self.context.with_offload_kqv(yes);
+        self
+    }
+
+    /// Enable or disable flash attention.
+    #[must_use]
+    pub fn with_flash_attn(mut self, yes: bool) -> Self {
+        self.context = self.context.with_flash_attn(yes);
+        self
+    }
+
     /// Configure the pooling type (used by embedding models).
     #[must_use]
     pub fn with_pooling_type(mut self, p: crate::context::params::PoolingType) -> Self {
         self.context = self.context.with_pooling_type(p);
         self
+    }
+
+    /// Apply a mobile-oriented preset. Call explicit setters after this method
+    /// to override individual values.
+    #[must_use]
+    pub fn with_mobile_preset(self, preset: MobilePreset) -> Self {
+        match preset {
+            MobilePreset::LowRam => self
+                .with_n_ctx(2048)
+                .with_n_batch(128)
+                .with_n_ubatch(128)
+                .with_n_threads(4)
+                .with_n_threads_batch(4)
+                .with_n_gpu_layers(0)
+                .with_flash_attn(false)
+                .with_use_mmap(true),
+            MobilePreset::Balanced => self
+                .with_n_ctx(4096)
+                .with_n_batch(512)
+                .with_n_ubatch(256)
+                .with_n_threads(4)
+                .with_n_threads_batch(4)
+                .with_n_gpu_layers(32)
+                .with_flash_attn(true)
+                .with_use_mmap(true),
+            MobilePreset::GpuMax => self
+                .with_n_ctx(4096)
+                .with_n_batch(1024)
+                .with_n_ubatch(512)
+                .with_n_gpu_layers(99)
+                .with_flash_attn(true)
+                .with_offload_kqv(true)
+                .with_use_mmap(true),
+        }
     }
 }
 
@@ -182,3 +355,27 @@ impl Default for LlamaParams {
 // StopReason is re-exported above for downstream users.
 #[doc(inline)]
 pub use StopReason as _StopReasonShim;
+
+#[cfg(test)]
+mod tests {
+    use super::{LlamaParams, MobilePreset};
+
+    #[test]
+    fn mobile_preset_can_be_overridden() {
+        let params = LlamaParams::new("model.gguf")
+            .with_mobile_preset(MobilePreset::Balanced)
+            .with_n_ctx(1024)
+            .with_n_gpu_layers(0);
+
+        assert_eq!(params.context.build().n_ctx, 1024);
+        assert_eq!(params.model.n_gpu_layers(), 0);
+    }
+
+    #[test]
+    fn mobile_preset_parse_accepts_cli_names() {
+        assert_eq!("low-ram".parse(), Ok(MobilePreset::LowRam));
+        assert_eq!("balanced".parse(), Ok(MobilePreset::Balanced));
+        assert_eq!("gpu-max".parse(), Ok(MobilePreset::GpuMax));
+        assert!("fast".parse::<MobilePreset>().is_err());
+    }
+}

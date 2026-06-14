@@ -24,15 +24,9 @@ pub mod parser;
 pub mod template;
 pub mod tool_call;
 
-#[cfg(feature = "common")]
-pub mod oaicompat;
-
 pub use message::{ChatMessage, Role};
 pub use parser::ChatParseState;
 pub use template::{
     detect_chat_format, render_builtin, render_template, BuiltinTemplate, TemplateError,
 };
 pub use tool_call::{ToolCall, ToolDefinition, ToolParseError, ToolParser};
-
-#[cfg(feature = "common")]
-pub use oaicompat::{apply_chat_template_oaicompat, OpenAIChatTemplateParams};

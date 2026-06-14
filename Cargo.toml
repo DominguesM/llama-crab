@@ -3,10 +3,12 @@ resolver = "2"
 members = [
     "llama-crab-sys",
     "llama-crab",
+    "llama-crab-server",
     "examples/quickstart",
     "examples/stateful_chat",
     "examples/embedding_search",
     "examples/simple",
+    "examples/streaming",
     "examples/chat",
     "examples/embeddings",
     "examples/reranker",
@@ -16,10 +18,11 @@ members = [
     "examples/mtmd",
     "examples/vision",
     "examples/lfm_vl_vision",
+    "examples/server_lfm",
 ]
 
 [workspace.package]
-version = "0.1.201"
+version = "0.1.300"
 edition = "2021"
 rust-version = "1.88"
 license = "MIT"
@@ -77,6 +80,24 @@ codegen-units = 1
 opt-level = 3
 debug = false
 strip = "debuginfo"
+
+[profile.release-perf]
+inherits = "release"
+lto = "thin"
+codegen-units = 1
+opt-level = 3
+debug = false
+strip = "debuginfo"
+
+[profile.release-size]
+inherits = "release"
+opt-level = "s"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+debug = false
+incremental = false
 
 [profile.dev]
 opt-level = 0
