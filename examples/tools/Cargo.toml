@@ -12,7 +12,7 @@ name = "tools"
 path = "src/main.rs"
 
 [dependencies]
-llama-crab = { path = "../../llama-crab", version = "0.1.0" }
+llama-crab = { path = "../../crates/llama-crab", version = "0.1.0" }
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
