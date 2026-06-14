@@ -1,26 +1,23 @@
-# Build the mkdocs-material site and publish the static output to
-# DominguesM/llama-crab.github.io.
+# Build the mkdocs-material site and deploy it with GitHub Pages Actions.
 #
-# This workflow is intentionally manual-only so docs publishing changes do not
-# trigger the library CI/CD path when merged. To publish, run it from the
-# Actions tab or with:
+# This workflow publishes the project site for DominguesM/llama-crab at:
+#
+#     https://dominguesm.github.io/llama-crab/
+#
+# It is intentionally manual-only so docs publishing does not run on every
+# docs-only merge. To publish, run it from the Actions tab or with:
 #
 #     gh workflow run docs.yml --ref main
 #
 # Required setup:
-# - Add a repository secret named DOCS_PAGES_TOKEN to DominguesM/llama-crab.
-#   The token must have contents:write access to DominguesM/llama-crab.github.io.
-# - In DominguesM/llama-crab.github.io, configure GitHub Pages as:
-#   Settings -> Pages -> Source: Deploy from a branch, Branch: main, Folder: /.
+# - In DominguesM/llama-crab, configure GitHub Pages as:
+#   Settings -> Pages -> Source: GitHub Actions.
 #
-# Default GitHub Pages URL:
-# https://dominguesm.github.io/llama-crab.github.io/
+# Layout published by GitHub Pages:
 #
-# Layout published to the target repository:
-#
-#     /        <- English landing page
-#     /en/     <- English site (built from docs/mkdocs.yml, docs_dir=en)
-#     /pt/     <- Portuguese site (built from docs/pt/mkdocs.yml, docs_dir=docs)
+#     /llama-crab/        <- redirect to /llama-crab/en/
+#     /llama-crab/en/     <- English site (built from docs/mkdocs.yml, docs_dir=en)
+#     /llama-crab/pt/     <- Portuguese site (built from docs/pt/mkdocs.yml, docs_dir=docs)
 name: Publish docs site
 
 'on':
@@ -28,18 +25,17 @@ name: Publish docs site
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: docs-pages-publish
   cancel-in-progress: false
 
 jobs:
-  publish:
-    name: Build and publish mkdocs-material site
+  build:
+    name: Build mkdocs-material site
     runs-on: ubuntu-latest
-    env:
-      PAGES_REPOSITORY: DominguesM/llama-crab.github.io
-      PAGES_BRANCH: main
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -68,38 +64,57 @@ jobs:
         working-directory: docs/pt
         run: mkdocs build --strict --site-dir ../../site_root/pt
 
-      - name: Make English the default landing page
+      - name: Add root redirect
         run: |
-          cp site_root/en/index.html site_root/index.html
-          cp site_root/en/404.html site_root/404.html || true
+          cat > site_root/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <meta http-equiv="refresh" content="0; url=/llama-crab/en/">
+              <link rel="canonical" href="/llama-crab/en/">
+              <title>llama-crab documentation</title>
+              <script>window.location.replace("/llama-crab/en/" + window.location.search + window.location.hash);</script>
+            </head>
+            <body>
+              <p><a href="/llama-crab/en/">Continue to the llama-crab documentation</a>.</p>
+            </body>
+          </html>
+          HTML
+          cat > site_root/404.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <meta http-equiv="refresh" content="0; url=/llama-crab/en/">
+              <link rel="canonical" href="/llama-crab/en/">
+              <title>llama-crab documentation</title>
+            </head>
+            <body>
+              <p><a href="/llama-crab/en/">Continue to the llama-crab documentation</a>.</p>
+            </body>
+          </html>
+          HTML
           touch site_root/.nojekyll
 
-      - name: Publish to DominguesM/llama-crab.github.io
-        env:
-          DOCS_PAGES_TOKEN: ${{ secrets.DOCS_PAGES_TOKEN }}
-        run: |
-          set -euo pipefail
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
 
-          if [[ -z "${DOCS_PAGES_TOKEN:-}" ]]; then
-            echo "::error::DOCS_PAGES_TOKEN is required to publish ${PAGES_REPOSITORY}"
-            exit 1
-          fi
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site_root
 
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-          repo_url="https://x-access-token:${DOCS_PAGES_TOKEN}@github.com/${PAGES_REPOSITORY}.git"
-          git clone --depth 1 "$repo_url" pages_repo
-
-          rsync -a --delete --exclude '.git' site_root/ pages_repo/
-
-          cd pages_repo
-          git add -A
-
-          if git diff --cached --quiet; then
-            echo "No documentation changes to publish."
-            exit 0
-          fi
-
-          git commit -m "docs: publish llama-crab site from ${GITHUB_SHA::7}"
-          git push origin "HEAD:${PAGES_BRANCH}"
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5

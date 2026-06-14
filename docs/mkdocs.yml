@@ -1,7 +1,7 @@
 site_name: llama-crab
 site_description: Safe, ergonomic and complete Rust bindings for llama.cpp
 site_author: llama-crab contributors
-site_url: https://dominguesm.github.io/llama-crab.github.io/
+site_url: https://dominguesm.github.io/llama-crab/en/
 
 repo_name: DominguesM/llama-crab
 repo_url: https://github.com/DominguesM/llama-crab
@@ -74,10 +74,10 @@ theme:
 extra:
   alternate:
     - name: English
-      link: /llama-crab.github.io/en/
+      link: /llama-crab/en/
       lang: en
     - name: Português (Brasil)
-      link: /llama-crab.github.io/pt/
+      link: /llama-crab/pt/
       lang: pt-BR
   social:
     - icon: fontawesome/brands/github
@@ -135,7 +135,7 @@ markdown_extensions:
   - pymdownx.tilde
 
 extra_css:
-  - ../assets/css/extra.css
+  - assets/css/extra.css
 
 nav:
   - Home: index.md

@@ -1,0 +1,66 @@
+/* ============================================================
+   llama-crab docs — extra styles
+   ============================================================ */
+
+/* Slightly tighter line-height for code blocks so long examples fit. */
+.md-typeset code,
+.md-typeset pre {
+  line-height: 1.5;
+}
+
+/* Custom callout colors that match the Rust "crab orange" palette. */
+.md-typeset .admonition.llamacrab-tip,
+.md-typeset details.llamacrab-tip {
+  border-color: #ff7043;
+}
+.md-typeset .llamacrab-tip > .admonition-title,
+.md-typeset details.llamacrab-tip > summary {
+  background-color: rgba(255, 112, 67, 0.1);
+}
+.md-typeset .llamacrab-tip > .admonition-title::before,
+.md-typeset details.llamacrab-tip > summary::before {
+  background-color: #ff7043;
+}
+
+/* Subtle "since" version tag styling. */
+.md-typeset .version-since {
+  display: inline-block;
+  font-size: 0.65em;
+  font-weight: 700;
+  padding: 0.1em 0.5em;
+  border-radius: 0.25em;
+  background-color: var(--md-accent-fg-color);
+  color: var(--md-primary-bg-color);
+  vertical-align: middle;
+  margin-left: 0.4em;
+}
+
+/* Mermaid diagrams: a bit more breathing room. */
+.md-typeset .mermaid {
+  margin: 1.25em 0;
+  text-align: center;
+}
+
+/* Better contrast for inline keyboard keys. */
+.md-typeset kbd {
+  font-family: var(--md-code-font);
+}
+
+/* Footer logo alignment fix. */
+.md-footer-meta {
+  padding-top: 0.5rem;
+}
+
+/* Hide edit URL fragment in title for cleaner anchor links */
+.md-typeset .headerlink {
+  opacity: 0;
+  transition: opacity 200ms;
+}
+.md-typeset h1:hover .headerlink,
+.md-typeset h2:hover .headerlink,
+.md-typeset h3:hover .headerlink,
+.md-typeset h4:hover .headerlink,
+.md-typeset h5:hover .headerlink,
+.md-typeset h6:hover .headerlink {
+  opacity: 1;
+}
