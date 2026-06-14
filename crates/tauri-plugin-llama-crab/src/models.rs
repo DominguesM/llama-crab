@@ -126,27 +126,31 @@ pub struct LoadModelRequest {
 }
 
 impl LoadModelRequest {
-    pub fn llama_params(&self) -> LlamaParams {
+    pub fn llama_params(&self, config: &crate::Config) -> LlamaParams {
         let mut params = LlamaParams::new(PathBuf::from(&self.path));
         if let Some(preset) = self.mobile_preset {
             params = params.with_mobile_preset(preset.to_llama());
         }
-        if let Some(n_ctx) = self.n_ctx {
+        let n_ctx = self.n_ctx.or(config.default_n_ctx);
+        if let Some(n_ctx) = n_ctx {
             params = params.with_n_ctx(n_ctx);
         }
-        if let Some(n_batch) = self.n_batch {
+        let n_batch = self.n_batch.or(config.default_n_batch);
+        if let Some(n_batch) = n_batch {
             params = params.with_n_batch(n_batch);
         }
-        if let Some(n_ubatch) = self.n_ubatch {
+        if let Some(n_ubatch) = self.n_ubatch.or(config.default_n_ubatch) {
             params = params.with_n_ubatch(n_ubatch);
         }
-        if let Some(n_gpu_layers) = self.n_gpu_layers {
+        let n_gpu_layers = self.n_gpu_layers.or(config.default_n_gpu_layers);
+        if let Some(n_gpu_layers) = n_gpu_layers {
             params = params.with_n_gpu_layers(n_gpu_layers);
         }
-        if let Some(n_threads) = self.n_threads {
+        let n_threads = self.n_threads.or(config.default_n_threads);
+        if let Some(n_threads) = n_threads {
             params = params.with_n_threads(n_threads);
         }
-        if let Some(n_threads_batch) = self.n_threads_batch {
+        if let Some(n_threads_batch) = self.n_threads_batch.or(config.default_n_threads_batch) {
             params = params.with_n_threads_batch(n_threads_batch);
         }
         if let Some(use_mmap) = self.use_mmap {

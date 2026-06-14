@@ -10,12 +10,34 @@ use crate::{
     error::{PluginError, Result},
     models::LoadedModelInfo,
     worker::WorkerHandle,
+    Config,
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct PluginState {
+    config: Config,
     models: Mutex<BTreeMap<String, LoadedModelEntry>>,
     requests: Mutex<BTreeMap<String, Arc<AtomicBool>>>,
+}
+
+impl PluginState {
+    pub fn with_config(config: Config) -> Self {
+        Self {
+            config,
+            models: Mutex::new(BTreeMap::new()),
+            requests: Mutex::new(BTreeMap::new()),
+        }
+    }
+
+    pub fn config(&self) -> &Config {
+        &self.config
+    }
+}
+
+impl Default for PluginState {
+    fn default() -> Self {
+        Self::with_config(Config::default())
+    }
 }
 
 #[derive(Debug, Clone)]
