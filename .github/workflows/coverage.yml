@@ -3,6 +3,9 @@ name: Coverage
 on:
   pull_request:
     branches: [develop, main]
+  push:
+    branches:
+      - 'release/**'
   workflow_dispatch:
 
 env:
