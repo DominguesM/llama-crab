@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `tauri-plugin-llama-crab`: added a `Config` struct and `init_with_config`
+  entry point so consumers can apply plugin-wide defaults (n_ctx, n_batch,
+  n_ubatch, n_threads, n_threads_batch, n_gpu_layers, default model name)
+  at startup. Anything left as `None` lets the per-request field win, with
+  the `llama-crab` defaults as the final fallback.
+- `tauri-plugin-llama-crab`: added the `mtmd` cargo feature. When enabled,
+  `load_model` can take an `mmproj_path` and the chat pipeline runs
+  multimodal (vision) inference through `llama.cpp`'s `mtmd` projector.
+  Image inputs are accepted as `data:image/...;base64,...` URLs and as
+  local file paths.
+- `tauri-plugin-llama-crab`: added granular `PluginError` kinds
+  (`workerSpawnFailed`, `workerDisconnected`, `workerPanicked`,
+  `multimodalNotEnabled`, `multimodalSetup`, `mediaDecode`) so the
+  TypeScript client can distinguish failure modes instead of collapsing
+  every error into `worker`.
+
+### Changed
+
+- `tauri-plugin-llama-crab`: `JoinError` from `spawn_blocking` now maps
+  to `workerPanicked`; `mpsc::RecvError` maps to `workerDisconnected`;
+  thread-spawn failures map to `workerSpawnFailed`.
+- `@llama-crab/tauri`: the Support Matrix entry for multimodal now
+  reflects that the Rust plugin must be built with the `mtmd` cargo
+  feature for image parts to be processed.
+
 ## [0.1.4] - 2026-06-14
 
 ### Added

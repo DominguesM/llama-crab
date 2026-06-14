@@ -18,6 +18,32 @@ fn main() {
 }
 ```
 
+For custom defaults applied to every `load_model` call:
+
+```rust,no_run
+use tauri_plugin_llama_crab::Config;
+
+let config = Config {
+    default_n_ctx: Some(4096),
+    default_n_gpu_layers: Some(99),
+    ..Config::default()
+};
+
+tauri::Builder::default()
+    .plugin(tauri_plugin_llama_crab::init_with_config(config))
+    .run(tauri::generate_context!())
+    .expect("error while running tauri application");
+```
+
+To enable multimodal (vision and audio) support, build the plugin with the
+`mtmd` cargo feature. The plugin will then load a paired `mmproj` projector
+file at model load time when `mmproj_path` is supplied.
+
+```toml
+[dependencies]
+tauri-plugin-llama-crab = { version = "0.1", features = ["mtmd"] }
+```
+
 ## Commands
 
 | Command | Description |

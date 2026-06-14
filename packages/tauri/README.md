@@ -137,4 +137,4 @@ await client.chat.completions.create({
 | Embeddings | OpenAI-like float/base64 responses |
 | Rerank | llama-crab server-compatible namespace |
 | Tokenize/detokenize | llama-crab extras namespace |
-| Multimodal | Accepts OpenAI-like image parts; Rust runtime currently rejects media unless an mtmd path is integrated |
+| Multimodal | Accepts OpenAI-like image parts. Requires the Rust plugin to be built with the `mtmd` cargo feature and the model loaded with `mmproj_path`. Audio is not yet supported. |
