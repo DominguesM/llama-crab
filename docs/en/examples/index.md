@@ -130,7 +130,7 @@ name = "run_my_example"
 path = "src/main.rs"
 
 [dependencies]
-llama-crab = { path = "../../llama-crab", version = "0.1.0" }
+llama-crab = { path = "../../crates/llama-crab", version = "0.1.0" }
 anyhow = "1"
 ```
 

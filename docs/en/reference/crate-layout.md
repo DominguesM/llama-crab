@@ -6,22 +6,28 @@ tree.
 
 ```
 llama-crab/
-├── llama-crab-sys/      # Raw FFI (bindgen + CMake)
-├── llama-crab/          # 100 % safe Rust API
-│   ├── backend          # LlamaBackend + NumaStrategy
-│   ├── model            # LlamaModel + LlamaModelParams
-│   ├── context          # LlamaContext + params + embeddings + session
-│   ├── batch            # LlamaBatch
-│   ├── sampling         # LlamaSampler + SamplerChain (17 strategies)
-│   ├── chat             # ChatMessage + templates + tool calling
-│   ├── speculative      # PromptLookupDecoding + speculative_decode
-│   ├── multimodal       # MtmdContext + MtmdBitmap (feature mtmd)
-│   ├── cache            # RamCache + DiskCache
-│   ├── json_schema      # JSON-Schema → GBNF
-│   ├── high_level       # Llama orchestrator + create_completion
-│   ├── error            # LlamaError enum
-│   └── log              # tracing integration
-└── llama-crab-server/   # HTTP binary built on top of llama-crab
+├── crates/
+│   ├── llama-crab-sys/      # Raw FFI (bindgen + CMake)
+│   ├── llama-crab/          # 100 % safe Rust API
+│   │   ├── backend          # LlamaBackend + NumaStrategy
+│   │   ├── model            # LlamaModel + LlamaModelParams
+│   │   ├── context          # LlamaContext + params + embeddings + session
+│   │   ├── batch            # LlamaBatch
+│   │   ├── sampling         # LlamaSampler + SamplerChain (17 strategies)
+│   │   ├── chat             # ChatMessage + templates + tool calling
+│   │   ├── speculative      # PromptLookupDecoding + speculative_decode
+│   │   ├── multimodal       # MtmdContext + MtmdBitmap (feature mtmd)
+│   │   ├── cache            # RamCache + DiskCache
+│   │   ├── json_schema      # JSON-Schema -> GBNF
+│   │   ├── high_level       # Llama orchestrator + create_completion
+│   │   ├── error            # LlamaError enum
+│   │   └── log              # tracing integration
+│   └── llama-crab-server/   # HTTP binary built on top of llama-crab
+├── packages/
+│   ├── core/                # Reserved for @llama-crab/core
+│   └── tauri/               # Reserved for @llama-crab/tauri
+├── examples/                # Runnable example crates
+└── docs/                    # User guide and website source
 ```
 
 ## `llama-crab-sys`
@@ -95,7 +101,7 @@ can be copied into another project without modification. See the
 
 ## Integration tests
 
-The [`llama-crab/tests/`](https://github.com/DominguesM/llama-crab/tree/main/llama-crab/tests)
+The [`crates/llama-crab/tests/`](https://github.com/DominguesM/llama-crab/tree/main/crates/llama-crab/tests)
 directory contains the same examples in test form. They skip cleanly
 when the model is not on disk, so a fresh clone can build the test
 binary without owning the model.

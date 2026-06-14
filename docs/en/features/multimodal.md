@@ -189,7 +189,7 @@ without changes.
 | `Llama-3.2-Vision` | Vision | Compatible via `mtmd`. |
 | `LLaVA-1.5/1.6` | Vision | Compatible via `mtmd`. |
 
-The integration tests under [`llama-crab/tests/`](https://github.com/DominguesM/llama-crab/tree/main/llama-crab/tests)
+The integration tests under [`crates/llama-crab/tests/`](https://github.com/DominguesM/llama-crab/tree/main/crates/llama-crab/tests)
 exercise both Gemma 4 and LFM2.5-VL on a fixed set of test images
 and skip cleanly when the model is not on disk.
 

@@ -38,7 +38,7 @@ um submódulo e uma feature do Cargo. O commit exato é visível em:
 
 - O badge do README (`llama.cpp: <commit>`).
 - O ponteiro do submódulo em
-  [`llama-crab-sys/llama.cpp`](https://github.com/DominguesM/llama-crab/tree/main/llama-crab-sys/llama.cpp).
+  [`crates/llama-crab-sys/llama.cpp`](https://github.com/DominguesM/llama-crab/tree/main/crates/llama-crab-sys/llama.cpp).
 - O `Cargo.lock` (procure pela dependência `llama-cpp-sys-2`).
 
 Dois builds da mesma versão de `llama-crab` sempre produzem a

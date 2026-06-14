@@ -186,7 +186,7 @@ da disciplina de deploy do Rust.
 | --- | --- | --- |
 | [`llama-crab`](https://crates.io/crates/llama-crab) | API 100% segura em Rust: carregamento de modelo, amostragem, chat, embeddings, cola do servidor. | **Maioria das aplicações.** Este é o crate do qual você depende. |
 | [`llama-crab-sys`](https://crates.io/crates/llama-crab-sys) | FFI bruta gerada via `bindgen` sobre `wrapper.h` + CMake. | Quando você precisa de acesso direto a símbolos do llama.cpp que o crate seguro ainda não encapsula. |
-| [`llama-crab-server`](https://github.com/DominguesM/llama-crab/tree/main/llama-crab-server) | Binário HTTP construído sobre `llama-crab`. | Quando você quer um endpoint compatível com OpenAI sem escrever um. |
+| [`llama-crab-server`](https://github.com/DominguesM/llama-crab/tree/main/crates/llama-crab-server) | Binário HTTP construído sobre `llama-crab`. | Quando você quer um endpoint compatível com OpenAI sem escrever um. |
 
 ## Licença
 

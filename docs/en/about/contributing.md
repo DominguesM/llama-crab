@@ -43,7 +43,7 @@ cd llama-crab
 git checkout -b my-feature
 ```
 
-The `--recursive` is important: the `llama-crab-sys/llama.cpp`
+The `--recursive` is important: the `crates/llama-crab-sys/llama.cpp`
 submodule is part of the build.
 
 ### 2. Make your changes
@@ -65,7 +65,7 @@ broken links or warnings.
 ### 3. Add a test
 
 The safe API has unit tests in the same module as the code, and
-integration tests under `llama-crab/tests/`. The integration tests
+integration tests under `crates/llama-crab/tests/`. The integration tests
 skip cleanly when the model is not on disk.
 
 ### 4. Update the documentation

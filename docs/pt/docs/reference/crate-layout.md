@@ -6,22 +6,28 @@ navegar pela árvore de código-fonte.
 
 ```
 llama-crab/
-├── llama-crab-sys/      # FFI bruta (bindgen + CMake)
-├── llama-crab/          # API 100% segura em Rust
-│   ├── backend          # LlamaBackend + NumaStrategy
-│   ├── model            # LlamaModel + LlamaModelParams
-│   ├── context          # LlamaContext + params + embeddings + session
-│   ├── batch            # LlamaBatch
-│   ├── sampling         # LlamaSampler + SamplerChain (17 estratégias)
-│   ├── chat             # ChatMessage + templates + tool calling
-│   ├── speculative      # PromptLookupDecoding + speculative_decode
-│   ├── multimodal       # MtmdContext + MtmdBitmap (feature mtmd)
-│   ├── cache            # RamCache + DiskCache
-│   ├── json_schema      # JSON-Schema → GBNF
-│   ├── high_level       # Orquestrador Llama + create_completion
-│   ├── error            # Enum LlamaError
-│   └── log              # Integração com tracing
-└── llama-crab-server/   # Binário HTTP construído sobre llama-crab
+├── crates/
+│   ├── llama-crab-sys/      # FFI bruta (bindgen + CMake)
+│   ├── llama-crab/          # API 100% segura em Rust
+│   │   ├── backend          # LlamaBackend + NumaStrategy
+│   │   ├── model            # LlamaModel + LlamaModelParams
+│   │   ├── context          # LlamaContext + params + embeddings + session
+│   │   ├── batch            # LlamaBatch
+│   │   ├── sampling         # LlamaSampler + SamplerChain (17 estratégias)
+│   │   ├── chat             # ChatMessage + templates + tool calling
+│   │   ├── speculative      # PromptLookupDecoding + speculative_decode
+│   │   ├── multimodal       # MtmdContext + MtmdBitmap (feature mtmd)
+│   │   ├── cache            # RamCache + DiskCache
+│   │   ├── json_schema      # JSON-Schema -> GBNF
+│   │   ├── high_level       # Orquestrador Llama + create_completion
+│   │   ├── error            # Enum LlamaError
+│   │   └── log              # Integração com tracing
+│   └── llama-crab-server/   # Binário HTTP construído sobre llama-crab
+├── packages/
+│   ├── core/                # Reservado para @llama-crab/core
+│   └── tauri/               # Reservado para @llama-crab/tauri
+├── examples/                # Crates de exemplo executáveis
+└── docs/                    # Guia do usuário e fonte do site
 ```
 
 ## `llama-crab-sys`
@@ -97,7 +103,7 @@ o [índice de exemplos](../examples/index.md) para a tabela.
 
 ## Testes de integração
 
-O diretório [`llama-crab/tests/`](https://github.com/DominguesM/llama-crab/tree/main/llama-crab/tests)
+O diretório [`crates/llama-crab/tests/`](https://github.com/DominguesM/llama-crab/tree/main/crates/llama-crab/tests)
 contém os mesmos exemplos em forma de teste. Eles pulam de forma
 limpa quando o modelo não está no disco, então um clone fresco
 pode compilar o binário de teste sem possuir o modelo.

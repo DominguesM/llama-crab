@@ -24,7 +24,7 @@ hide:
 
 ## What is llama-crab?
 
-`llama-crab` is a Rust crate (actually a workspace of two crates) that
+`llama-crab` is a Rust workspace of library and server crates that
 gives you a **100 % safe Rust API** over [`llama.cpp`](https://github.com/ggml-org/llama.cpp).
 You can load any GGUF model, run text and chat completions, compute
 embeddings, constrain generation with a GBNF grammar, drive vision-
@@ -185,7 +185,7 @@ discipline.
 | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | [`llama-crab`](https://crates.io/crates/llama-crab)                                         | 100 % safe Rust API: model loading, sampling, chat, embeddings, server glue. | **Most applications.** This is the crate you depend on.                                   |
 | [`llama-crab-sys`](https://crates.io/crates/llama-crab-sys)                                 | Raw FFI generated via `bindgen` over `wrapper.h` + CMake.                    | When you need direct access to llama.cpp symbols that the safe crate does not (yet) wrap. |
-| [`llama-crab-server`](https://github.com/DominguesM/llama-crab/tree/main/llama-crab-server) | HTTP binary built on top of `llama-crab`.                                    | When you want an OpenAI-compatible endpoint without writing one.                          |
+| [`llama-crab-server`](https://github.com/DominguesM/llama-crab/tree/main/crates/llama-crab-server) | HTTP binary built on top of `llama-crab`.                                    | When you want an OpenAI-compatible endpoint without writing one.                          |
 
 ## License
 

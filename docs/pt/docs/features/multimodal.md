@@ -190,7 +190,7 @@ funciona sem mudanças.
 | `Llama-3.2-Vision` | Visão | Compatível via `mtmd`. |
 | `LLaVA-1.5/1.6` | Visão | Compatível via `mtmd`. |
 
-Os testes de integração em [`llama-crab/tests/`](https://github.com/DominguesM/llama-crab/tree/main/llama-crab/tests)
+Os testes de integração em [`crates/llama-crab/tests/`](https://github.com/DominguesM/llama-crab/tree/main/crates/llama-crab/tests)
 exercitam tanto Gemma 4 quanto LFM2.5-VL em um conjunto fixo de
 imagens de teste e pulam de forma limpa quando o modelo não está
 no disco.

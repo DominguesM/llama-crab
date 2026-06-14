@@ -138,8 +138,8 @@ reproduzível. Para saída de maior qualidade, construa um
 | `Llama-3.2-Vision` | Compatível via mtmd. |
 
 O mesmo fluxo é exercitado pelos testes de integração em
-`llama-crab/tests/gemma4_vision.rs` e
-`llama-crab/tests/lfm_vl_vision.rs`.
+`crates/llama-crab/tests/gemma4_vision.rs` e
+`crates/llama-crab/tests/lfm_vl_vision.rs`.
 
 ## Código-fonte completo
 

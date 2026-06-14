@@ -135,8 +135,8 @@ sampler. For higher-quality output, build a `SamplerChain`.
 | `Llama-3.2-Vision` | Compatible via mtmd. |
 
 The same flow is exercised by the integration tests in
-`llama-crab/tests/gemma4_vision.rs` and
-`llama-crab/tests/lfm_vl_vision.rs`.
+`crates/llama-crab/tests/gemma4_vision.rs` and
+`crates/llama-crab/tests/lfm_vl_vision.rs`.
 
 ## Full source
 

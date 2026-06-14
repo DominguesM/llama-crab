@@ -46,7 +46,7 @@ git checkout -b minha-feature
 ```
 
 O `--recursive` é importante: o submódulo
-`llama-crab-sys/llama.cpp` é parte do build.
+`crates/llama-crab-sys/llama.cpp` é parte do build.
 
 ### 2. Faça suas mudanças
 
@@ -67,7 +67,7 @@ rustdoc tem links quebrados ou warnings.
 ### 3. Adicione um teste
 
 A API segura tem testes unitários no mesmo módulo do código, e
-testes de integração em `llama-crab/tests/`. Os testes de
+testes de integração em `crates/llama-crab/tests/`. Os testes de
 integração pulam de forma limpa quando o modelo não está no disco.
 
 ### 4. Atualize a documentação
