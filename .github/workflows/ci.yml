@@ -189,6 +189,6 @@ jobs:
         with:
           cache-on-failure: true
       - name: Document llama-crab
-        run: RUSTDOCFLAGS="--cfg docsrs -D warnings" cargo doc -p llama-crab --no-deps --no-default-features --features common,mtmd
+        run: RUSTDOCFLAGS="--cfg docsrs -D warnings" cargo +nightly doc -p llama-crab --no-deps --no-default-features --features common,mtmd
       - name: Document llama-crab-sys
-        run: RUSTDOCFLAGS="--cfg docsrs -D warnings" cargo doc -p llama-crab-sys --no-deps --no-default-features --features common,mtmd
+        run: RUSTDOCFLAGS="--cfg docsrs -D warnings" cargo +nightly doc -p llama-crab-sys --no-deps --no-default-features --features common,mtmd
