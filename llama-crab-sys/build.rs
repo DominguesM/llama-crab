@@ -250,7 +250,7 @@ fn run_bindgen(manifest_dir: &PathBuf, features: &Features) -> bindgen::Bindings
     if features.llguidance {
         // Do not expose the local llguidance registration shim until it is
         // backed by the upstream llguidance library. The feature is accepted
-        // for build compatibility, but no llg_* surface is published here.
+        // for building with llguidance, but no llg_* surface is published here.
         eprintln!(
             "cargo:warning=llama-crab-sys: llguidance feature has no C-ABI surface in v0.1.300"
         );

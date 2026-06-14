@@ -51,8 +51,7 @@ fn main() -> Result<()> {
     let mut sampler = LlamaSampler::greedy().expect("greedy");
     let eos = llama.model().token_eos();
     let mut out = String::new();
-    let mut n_generated = 0_usize;
-    for _ in 0..96 {
+    for n_generated in 0_usize..96 {
         let idx = if n_generated == 0 { -1 } else { 0 };
         let tok: LlamaToken = unsafe { sampler.sample(ctx_ptr, idx) };
         sampler.accept(tok);
@@ -63,7 +62,6 @@ fn main() -> Result<()> {
 
         let single = LlamaBatch::one(tok, new_n_past + n_generated as i32, 0, true);
         llama.context().decode(&single)?;
-        n_generated += 1;
     }
 
     println!("assistant> {}", out.trim());

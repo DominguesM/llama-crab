@@ -23,8 +23,7 @@ mod inner {
             Ok(Self { inner })
         }
 
-        /// Tokenize `text` into token ids that are compatible with a loaded
-        /// llama.cpp model.
+        /// Tokenize `text` into token ids for a loaded llama.cpp model.
         pub fn encode(&self, text: &str, add_bos: bool) -> Result<Vec<LlamaToken>> {
             let enc = self
                 .inner

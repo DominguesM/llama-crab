@@ -57,7 +57,8 @@ pub use crate::context::{LlamaContext, LlamaContextParams};
 pub use crate::error::{LlamaError, Result};
 pub use crate::high_level::chat_completion::ChatMessage;
 pub use crate::high_level::completion::{
-    Completion, CompletionChunk, CompletionOptions, StopReason, StreamControl,
+    Completion, CompletionChunk, CompletionLogprobs, CompletionOptions, StopReason, StreamControl,
+    TokenLogprob,
 };
 pub use crate::high_level::tokenizer::{FimTokens, LlamaTokenizer, Tokenizer};
 pub use crate::high_level::{Llama, LlamaParams};

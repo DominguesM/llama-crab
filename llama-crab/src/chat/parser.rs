@@ -1,8 +1,7 @@
-//! Streaming state for the OpenAI-compat chat-template parser.
+//! Streaming state for structured chat-template output.
 //!
-//! In v0.1 this is a pure-Rust buffering parser. Earlier C-ABI parser
-//! placeholders are intentionally not exposed by `llama-crab-sys` until
-//! they are backed by upstream implementations.
+//! This is a pure-Rust buffering parser for JSON objects emitted during
+//! generation.
 //!
 //! For tool-call streaming (different concern, same theme), see
 //! [`super::tool_call::ToolParser`].
@@ -11,7 +10,7 @@ use serde_json::Value;
 
 use crate::error::{LlamaError, Result};
 
-/// A streaming JSON parser for the OAI-compat chat-template output.
+/// A streaming JSON parser for structured chat-template output.
 ///
 /// Currently this buffers input and parses it once a complete JSON object
 /// appears. This wrapper keeps the public surface stable while richer

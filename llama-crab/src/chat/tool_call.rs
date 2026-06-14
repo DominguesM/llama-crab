@@ -42,7 +42,7 @@ impl ToolDefinition {
         self
     }
 
-    /// JSON-Schema style: serialize to OpenAI's `tools[].function` shape.
+    /// Serialize to a function-tool JSON shape.
     #[must_use]
     pub fn to_openai_function(&self) -> Value {
         json!({

@@ -80,8 +80,8 @@ impl MtmdContext {
     /// Initialize the multimodal context from an `mmproj` GGUF file.
     ///
     /// # Errors
-    /// Returns an error if the file cannot be read or the projector is
-    /// incompatible with the supplied text model.
+    /// Returns an error if the file cannot be read or the projector does not
+    /// match the supplied text model.
     pub fn init_from_file(mmproj_path: impl AsRef<Path>, text_model: &LlamaModel) -> Result<Self> {
         Self::init_from_file_with(mmproj_path, text_model, MtmdContextParams::default())
     }

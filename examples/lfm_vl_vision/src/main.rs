@@ -34,7 +34,7 @@ use llama_crab::sampling::LlamaSampler;
 use llama_crab::token::LlamaToken;
 use llama_crab::{Llama, LlamaParams, Role};
 use std::io::{self, BufRead, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 const DEFAULT_MODEL: &str = "models/LFM2.5-VL-1.6B-Q4_K_M.gguf";
@@ -132,7 +132,7 @@ fn main() -> Result<()> {
 }
 
 /// One-shot helper used when the user passes 4 positional arguments.
-fn run_single_turn(model: &str, mmproj: &str, image: &PathBuf, prompt: &str) -> Result<()> {
+fn run_single_turn(model: &str, mmproj: &str, image: &Path, prompt: &str) -> Result<()> {
     let mut llama = Llama::load(LlamaParams::new(model).with_n_ctx(4096))?;
     let mtmd = MtmdContext::init_from_file(mmproj, llama.model())?;
     let history = vec![
@@ -153,7 +153,7 @@ fn run_single_turn(model: &str, mmproj: &str, image: &PathBuf, prompt: &str) -> 
 fn ask(
     llama: &mut Llama,
     mtmd: &MtmdContext,
-    image: &std::path::Path,
+    image: &Path,
     history: &[ChatMessage],
 ) -> Result<String> {
     use llama_crab::chat::render_builtin;
@@ -186,8 +186,7 @@ fn ask(
     let mut sampler = LlamaSampler::greedy().expect("greedy");
     let eos = llama.model().token_eos();
     let mut out = String::new();
-    let mut n_generated = 0_usize;
-    for _ in 0..256 {
+    for n_generated in 0_usize..256 {
         let idx = if n_generated == 0 { -1 } else { 0 };
         let tok: LlamaToken = unsafe { sampler.sample(ctx_ptr, idx) };
         sampler.accept(tok);
@@ -199,7 +198,6 @@ fn ask(
         let mut single = LlamaBatch::new(1, 1);
         single.add(tok, new_n_past + n_generated as i32, &[0], true)?;
         llama.context().decode(&single)?;
-        n_generated += 1;
     }
     Ok(out.trim().to_string())
 }

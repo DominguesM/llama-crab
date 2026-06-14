@@ -1,14 +1,14 @@
 //! High-level orchestrator: load model, create context, generate tokens.
 //!
-//! This module mirrors the public surface of `llama-cpp-python`'s `Llama`
-//! class, but stays 100% safe Rust and uses idiomatic builders instead of
-//! `__init__` parameters.
+//! The API keeps model loading, context ownership and common generation flows
+//! behind one safe Rust type.
 
 pub mod chat_completion;
 pub mod completion;
 pub mod embedding;
 pub mod hf_tokenizer;
 pub mod infill;
+pub mod openai_compat;
 pub mod rerank;
 pub mod tokenizer;
 
@@ -31,8 +31,10 @@ pub use self::chat_completion::{
     ChatMessage,
 };
 pub use self::completion::{
-    create_completion, create_completion_stream, create_completion_with_options, Completion,
-    CompletionChunk, CompletionOptions, StopReason, StreamControl,
+    create_completion, create_completion_stream, create_completion_stream_with_sampler,
+    create_completion_with_options, create_completion_with_sampler, Completion, CompletionChunk,
+    CompletionLogprobs, CompletionOptions, SamplingOptions, StopReason, StreamControl,
+    TokenLogprob,
 };
 
 /// Top-level orchestrator. Owns the backend, the model and the context.
@@ -49,7 +51,7 @@ impl Llama {
     ///
     /// # Errors
     /// Returns an error if the file cannot be loaded, the model is
-    /// incompatible, or context creation fails.
+    /// rejected by llama.cpp, or context creation fails.
     pub fn load(params: LlamaParams) -> Result<Self> {
         let backend = LlamaBackend::init()?;
         let model = LlamaModel::load_from_file(&backend, &params.model_path, &params.model)?;
@@ -93,6 +95,16 @@ impl Llama {
         create_completion_with_options(self, prompt, options)
     }
 
+    /// Synchronous text completion using a caller-provided sampler.
+    pub fn create_completion_with_sampler(
+        &mut self,
+        prompt: &str,
+        options: CompletionOptions,
+        sampler: &mut crate::sampling::LlamaSampler,
+    ) -> Result<Completion> {
+        create_completion_with_sampler(self, prompt, options, sampler)
+    }
+
     /// Synchronous streaming text completion. The callback is invoked as text
     /// becomes available and can return [`StreamControl::Stop`] to end
     /// generation.
@@ -108,9 +120,22 @@ impl Llama {
         create_completion_stream(self, prompt, options, on_chunk)
     }
 
-    /// Synchronous chat completion. The messages are rendered through a
-    /// minimal `role: content\n` template (real chat-template rendering lands
-    /// in v0.2) and the response is decoded token-by-token.
+    /// Synchronous streaming text completion using a caller-provided sampler.
+    pub fn create_completion_stream_with_sampler<F>(
+        &mut self,
+        prompt: &str,
+        options: CompletionOptions,
+        sampler: &mut crate::sampling::LlamaSampler,
+        on_chunk: F,
+    ) -> Result<Completion>
+    where
+        F: FnMut(CompletionChunk) -> StreamControl,
+    {
+        create_completion_stream_with_sampler(self, prompt, options, sampler, on_chunk)
+    }
+
+    /// Synchronous chat completion. The messages are rendered with the Plain
+    /// built-in template and the response is decoded token-by-token.
     pub fn create_chat_completion(
         &mut self,
         messages: &[ChatMessage],

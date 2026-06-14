@@ -12,7 +12,7 @@
 //!
 //! | Feature | Description |
 //! |---|---|
-//! | `common` | Compile `libcommon.a` (chat templates, JSON schema, OpenAI compat) |
+//! | `common` | Compile `libcommon.a` for chat templates and JSON schema helpers |
 //! | `cuda` | NVIDIA CUDA backend |
 //! | `cuda-no-vmm` | CUDA without Virtual Memory Management |
 //! | `metal` | Apple Metal (default on macOS aarch64) |
