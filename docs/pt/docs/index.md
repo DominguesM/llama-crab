@@ -148,33 +148,35 @@ acionar modelos visão-linguagem através do `mtmd`, ou expor tudo via HTTP
 
 ## Por que llama-crab?
 
-<div class="grid" markdown>
+`llama-crab` foi desenhado para aplicações que precisam acessar o
+`llama.cpp` diretamente sem abrir mão da segurança, do empacotamento e
+da disciplina de deploy do Rust.
 
-:material-shield-check: __Seguro por padrão__
+<div class="grid cards" markdown>
 
-A API de alto nível não expõe nenhuma superfície `unsafe` — toda
-fronteira FFI vive atrás de wrappers tipados em `llama-crab-sys`.
-Você só opta por acesso bruto quando realmente precisa.
+- :material-shield-check: __Seguro por padrão__
 
-:material-puzzle-outline: __Superfície de recursos completa__
+    A API de alto nível não expõe superfície `unsafe`. As fronteiras FFI
+    ficam atrás de wrappers tipados, e o acesso bruto continua opt-in
+    para os casos que realmente precisam dele.
 
-Cada estratégia de amostragem, formato de chat, pipeline de visão,
-conversor JSON-Schema, decodificador especulativo por prompt-lookup
-e cache KV persistente que o `llama.cpp` oferece está acessível
-a partir de Rust seguro.
+- :material-puzzle-outline: __Superfície de recursos completa__
 
-:material-package-variant: __Builds reproduzíveis__
+    Amostragem, formatos de chat, pipelines de visão, gramáticas por
+    JSON-Schema, decodificação especulativa, embeddings, reranking e
+    fluxos de cache KV ficam disponíveis por APIs seguras em Rust.
 
-`llama.cpp` está fixado em um commit específico, o build é hermético
-e a CI roda em uma matriz de combinações CPU / CUDA / Vulkan / Metal
-/ ROCm para manter cada backend funcional.
+- :material-package-variant: __Builds reproduzíveis__
 
-:material-flash: __Performance em primeiro lugar__
+    O `llama.cpp` fica fixado em um commit conhecido, o build explicita
+    os backends habilitados, e a CI mantém visíveis as combinações CPU /
+    CUDA / Vulkan / Metal / ROCm suportadas.
 
-Offload de camadas, flash attention, presets mobile, cadeias de
-amostragem, decodificação especulativa e parsers de tool-call são
-todos projetados para mantê-lo no caminho rápido sem escrever
-kernels customizados.
+- :material-flash: __Performance em primeiro lugar__
+
+    Offload de camadas, flash attention, presets mobile, cadeias de
+    amostragem, decodificação especulativa e parsers de tool-call ficam
+    expostos sem exigir kernels customizados no código da aplicação.
 
 </div>
 

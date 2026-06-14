@@ -147,31 +147,35 @@ without touching a single `unsafe` block at the application level.
 
 ## Why llama-crab?
 
-<div class="grid" markdown>
+`llama-crab` is designed for applications that need direct access to
+`llama.cpp` without giving up Rust's safety, packaging, or deployment
+discipline.
 
-:material-shield-check: **Safe by default**
+<div class="grid cards" markdown>
 
-The high-level API exposes no `unsafe` surface — every FFI boundary
-lives behind typed wrappers in `llama-crab-sys`. You opt into raw
-access only when you need it.
+- :material-shield-check: **Safe by default**
 
-:material-puzzle-outline: **Complete feature surface**
+    The high-level API exposes no `unsafe` surface. FFI boundaries live
+    behind typed wrappers, and raw access stays opt-in for the cases
+    that truly need it.
 
-Every sampling strategy, chat format, vision pipeline, JSON-Schema
-converter, prompt-lookup speculative decoder, and persistent KV cache
-that `llama.cpp` ships with is reachable from safe Rust.
+- :material-puzzle-outline: **Complete feature surface**
 
-:material-package-variant: **Reproducible builds**
+    Sampling, chat formats, vision pipelines, JSON-Schema grammars,
+    speculative decoding, embeddings, reranking, and KV cache flows are
+    available from safe Rust APIs.
 
-`llama.cpp` is pinned to a specific commit, the build is hermetic, and
-CI runs on a matrix of CPU / CUDA / Vulkan / Metal / ROCm combinations
-to keep every backend in shape.
+- :material-package-variant: **Reproducible builds**
 
-:material-flash: **Performance first**
+    `llama.cpp` is pinned to a known commit, the build is explicit about
+    enabled backends, and CI keeps the supported CPU / CUDA / Vulkan /
+    Metal / ROCm combinations visible.
 
-Layer offload, flash attention, mobile presets, sampling chains,
-speculative decoding and tool-call parsers are all designed to keep
-you on the fast path without writing custom kernels.
+- :material-flash: **Performance first**
+
+    Layer offload, flash attention, mobile presets, sampling chains,
+    speculative decoding, and tool-call parsers are exposed without
+    requiring application code to own custom kernels.
 
 </div>
 
