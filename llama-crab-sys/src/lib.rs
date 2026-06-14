@@ -26,7 +26,7 @@
 //! | `dynamic-backends` | Load GGML backends as shared objects at runtime |
 
 #![doc(
-    html_logo_url = "https://raw.githubusercontent.com/DominguesM/llama-crab/main/docs/src/assets/logo.png"
+    html_logo_url = "https://gist.githubusercontent.com/DominguesM/127b9e5614e0e2da6b896fb3da3c8f2d/raw/a42e6daa629eb6f0254de026c47da9aff3c1f0e2/canarim-crab.webp"
 )]
 #![allow(unknown_lints)]
 #![allow(non_camel_case_types)]
