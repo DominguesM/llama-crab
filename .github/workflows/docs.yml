@@ -1,5 +1,21 @@
-# Deploy the mdBook guide in docs/ to GitHub Pages.
-name: Deploy docs
+# Build the mkdocs-material site and deploy it to GitHub Pages.
+#
+# This workflow deploys to the user/organisation page at
+# https://llama-crab.github.io/ — for that to work, the documentation
+# source must live in a separate repository named `llama-crab.github.io`
+# (see the "Setup the org page repository" section in docs/README.md).
+#
+# Layout produced on GitHub Pages (org page at
+# https://llama-crab.github.io/):
+#
+#     /        ← redirect to /en/ (or serve the English site directly)
+#     /en/     ← English site (built from docs/mkdocs.yml, docs_dir=en)
+#     /pt/     ← Portuguese site (built from docs/pt/mkdocs.yml, docs_dir=docs)
+#
+# The mkdocs-material "stay on page" feature works because both sites
+# share the same page structure (the JavaScript swaps the language
+# prefix in the URL).
+name: Deploy docs to GitHub Pages
 
 'on':
   push:
@@ -21,27 +37,69 @@ concurrency:
 
 jobs:
   build:
-    name: Build mdBook
+    name: Build mkdocs-material site
     runs-on: ubuntu-latest
-    env:
-      MDBOOK_VERSION: 0.5.3
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-mkdocs-${{ hashFiles('docs/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-mkdocs-
+
+      - name: Install mkdocs-material
+        run: pip install -r docs/requirements.txt
+
+      - name: Build English site
+        # mkdocs reads `mkdocs.yml` from the working directory and writes
+        # the rendered HTML to `site_dir`. We write to `site_root/en/`
+        # so the English site is served at /en/ on GitHub Pages.
+        working-directory: docs
+        run: mkdocs build --strict --site-dir ../site_root/en
+
+      - name: Build Portuguese site
+        # The Portuguese mkdocs.yml has `docs_dir: docs` so it reads
+        # from docs/pt/docs/. We write the HTML to `site_root/pt/`
+        # so the Portuguese site is served at /pt/ on GitHub Pages.
+        working-directory: docs/pt
+        run: mkdocs build --strict --site-dir ../../site_root/pt
+
+      - name: Make English the default landing page
+        # /en/ has the full English site. Copy its index.html to /
+        # so visiting https://llama-crab.github.io/ shows the docs
+        # landing page (and the language selector lets users switch).
+        run: |
+          cp site_root/en/index.html site_root/index.html
+          # Also copy the 404 page so the root has one too.
+          cp site_root/en/404.html site_root/404.html || true
+
+      - name: Show site root layout
+        run: |
+          echo "--- site_root top-level ---"
+          ls -la site_root
+          echo
+          echo "--- site_root/en/ (English) ---"
+          ls site_root/en | head -20
+          echo
+          echo "--- site_root/pt/ (Portuguese) ---"
+          ls site_root/pt | head -20
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
-
-      - name: Install mdBook
-        run: cargo install --locked mdbook --version "${MDBOOK_VERSION}"
-
-      - name: Build docs
-        run: mdbook build docs
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: docs/book
+          path: site_root
 
   deploy:
     name: Deploy to GitHub Pages
