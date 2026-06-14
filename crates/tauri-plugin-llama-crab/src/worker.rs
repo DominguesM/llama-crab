@@ -311,7 +311,8 @@ fn request_reply<T>(
     let (reply, rx) = mpsc::channel();
     tx.send(command(reply))
         .map_err(|_| PluginError::worker_disconnected())?;
-    rx.recv().map_err(|_: std::sync::mpsc::RecvError| PluginError::worker_disconnected())?
+    rx.recv()
+        .map_err(|_: std::sync::mpsc::RecvError| PluginError::worker_disconnected())?
 }
 
 fn run_chat(llama: &mut Llama, request: ChatCompletionRequest) -> Result<ChatCompletionResponse> {
@@ -534,8 +535,14 @@ fn run_chat_multimodal(
     let id = new_id("chatcmpl");
     let created = crate::models::unix_timestamp();
     let (prompt, bitmaps) = build_multimodal_prompt(&request)?;
-    let (text, total_tokens) =
-        eval_and_generate(llama, mtmd, &prompt, &bitmaps, &request.completion_options(), None)?;
+    let (text, total_tokens) = eval_and_generate(
+        llama,
+        mtmd,
+        &prompt,
+        &bitmaps,
+        &request.completion_options(),
+        None,
+    )?;
     Ok(ChatCompletionResponse {
         id,
         object: "chat.completion",
@@ -632,9 +639,7 @@ fn run_chat_stream_multimodal(
 /// Build a multimodal prompt: collect every image from the request and
 /// append one media marker per bitmap. Audio is not yet supported.
 #[cfg(feature = "mtmd")]
-fn build_multimodal_prompt(
-    request: &ChatCompletionRequest,
-) -> Result<(String, Vec<MtmdBitmap>)> {
+fn build_multimodal_prompt(request: &ChatCompletionRequest) -> Result<(String, Vec<MtmdBitmap>)> {
     let mut prompt = String::new();
     let mut bitmaps: Vec<MtmdBitmap> = Vec::new();
     let marker = default_media_marker();
