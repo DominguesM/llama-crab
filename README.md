@@ -31,7 +31,7 @@ Safe, ergonomic Rust bindings for [`llama.cpp`](https://github.com/ggml-org/llam
 - Multimodal support through `mtmd` for vision and audio capable GGUF models.
 - Hardware backends for CPU, Metal, CUDA, Vulkan, ROCm, OpenCL and KleidiAI through Cargo features.
 
-Documentation is available at [docs.rs/llama-crab](https://docs.rs/llama-crab) and in the [mdBook user guide](docs/src/SUMMARY.md).
+Documentation is available at [docs.rs/llama-crab](https://docs.rs/llama-crab) and in the [Material for MkDocs user guide](https://DominguesM.github.io/llama-crab/) (source in [`docs/`](docs/README.md)). The guide is available in English and Portuguese.
 
 ## Installation
 
