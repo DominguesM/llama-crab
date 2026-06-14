@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "llama-crab-sys",
     "llama-crab",
+    "llama-crab-server",
     "examples/quickstart",
     "examples/stateful_chat",
     "examples/embedding_search",
@@ -17,6 +18,7 @@ members = [
     "examples/mtmd",
     "examples/vision",
     "examples/lfm_vl_vision",
+    "examples/server_lfm",
 ]
 
 [workspace.package]
