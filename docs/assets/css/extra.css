@@ -41,6 +41,18 @@
   text-align: center;
 }
 
+/* Home hero: keep local serve and deployed Pages visually identical. */
+.md-typeset .llamacrab-home-logo {
+  display: block;
+  width: min(9rem, 42vw);
+  height: auto;
+  margin: 0 auto 0.7rem;
+}
+
+.md-typeset .llamacrab-home-logo + h1 {
+  margin-top: 0;
+}
+
 /* Better contrast for inline keyboard keys. */
 .md-typeset kbd {
   font-family: var(--md-code-font);
