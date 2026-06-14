@@ -18,6 +18,7 @@ docs/
 ├── overrides/              # Theme customisation
 │   └── partials/           # (empty by default — extend as needed)
 ├── en/                     # English content
+│   ├── assets/css/extra.css # English copy of custom theme styles
 │   ├── index.md            # English home
 │   ├── getting-started/    # English getting started
 │   ├── core-concepts/      # English core concepts
@@ -32,6 +33,7 @@ docs/
 └── pt/                     # Portuguese translations (one file per
                             # English page, mirror structure)
     ├── docs/               # Portuguese content
+    │   └── assets/css/extra.css # Portuguese copy of custom theme styles
     └── mkdocs.yml
 ```
 
@@ -91,43 +93,37 @@ multi-language documentation:
 - The Portuguese `mkdocs.yml` lives at `docs/pt/mkdocs.yml` and
   reads from `docs/pt/docs/`.
 - Both configs set `site_url` and `extra.alternate` so the
-  language selector in the header links between
-  `/llama-crab.github.io/en/` and `/llama-crab.github.io/pt/`.
+  language selector in the header links between `/llama-crab/en/`
+  and `/llama-crab/pt/`.
 - The English `mkdocs.yml` configures the theme `logo` and
   `favicon` to point at `assets/images/logo.png` (the canarim-crab
   mark).
+- `extra_css` must reference files inside each language `docs_dir`,
+  so `docs/assets/css/extra.css` is mirrored into
+  `docs/en/assets/css/extra.css` and `docs/pt/docs/assets/css/extra.css`.
 
 The GitHub Actions workflow at
-`.github/workflows/docs.yml` builds both sites and publishes the
-combined static output to `DominguesM/llama-crab.github.io`.
+`.github/workflows/docs.yml` builds both sites and uploads the
+combined static output as a GitHub Pages artifact.
 
 ### GitHub Pages deployment
 
-The site is deployed to the separate Pages repository
-`DominguesM/llama-crab.github.io`. With the default GitHub Pages URL
-for a project repository, the rendered site is available at:
-
-`https://dominguesm.github.io/llama-crab.github.io/`
+The site is deployed as the project page for `DominguesM/llama-crab`
+at `https://dominguesm.github.io/llama-crab/`.
 
 One-time setup:
 
-1. In `DominguesM/llama-crab.github.io`, enable GitHub Pages:
-   `Settings -> Pages -> Source: Deploy from a branch -> Branch: main -> Folder: /`.
-2. Create a token that can push to `DominguesM/llama-crab.github.io`.
-   A fine-grained personal access token with repository
-   `contents:write` permission is sufficient.
-3. Add that token to `DominguesM/llama-crab` as the repository
-   secret `DOCS_PAGES_TOKEN`.
+1. In `DominguesM/llama-crab`, enable GitHub Pages:
+   `Settings -> Pages -> Source: GitHub Actions`.
 
 The workflow then:
 
 1. Builds the English site into `site_root/en/`.
 2. Builds the Portuguese site into `site_root/pt/`.
-3. Copies the English `index.html` to `site_root/index.html` so
-   that visiting the root URL shows the English landing page.
+3. Writes a small root `index.html` redirect to `/llama-crab/en/`.
 4. Adds `.nojekyll`.
-5. Pushes the rendered static files to the `main` branch of
-   `DominguesM/llama-crab.github.io`.
+5. Uploads `site_root/` as the Pages artifact.
+6. Deploys with `actions/deploy-pages`.
 
 The workflow is manual-only by design, so merging docs/deploy-only
 changes does not publish a new site or trigger library CI/CD. To
@@ -139,9 +135,9 @@ gh workflow run docs.yml --ref main
 
 The resulting URLs are:
 
-- `https://dominguesm.github.io/llama-crab.github.io/` (English landing page)
-- `https://dominguesm.github.io/llama-crab.github.io/en/` (English)
-- `https://dominguesm.github.io/llama-crab.github.io/pt/` (Portuguese)
+- `https://dominguesm.github.io/llama-crab/` (redirect to `/llama-crab/en/`)
+- `https://dominguesm.github.io/llama-crab/en/` (English)
+- `https://dominguesm.github.io/llama-crab/pt/` (Portuguese)
 
 The mkdocs-material "stay on page" feature works because both
 sites share the same page structure: JavaScript in the theme
