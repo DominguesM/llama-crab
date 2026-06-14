@@ -6,6 +6,7 @@
 #   ./scripts/download_models.sh smol                  # tiny text-only (~400 MB)
 #   ./scripts/download_models.sh gemma4                 # Gemma 4 text + mmproj (~5 GB)
 #   ./scripts/download_models.sh lfm-vl                # LFM2.5-VL text + mmproj (~2 GB)
+#   ./scripts/download_models.sh lfm-text              # LFM2.5-VL text only (~1 GB)
 #   ./scripts/download_models.sh test-image             # the synthetic PNG fixture
 #
 # Models land in `./models/` (the conventional path the examples look at).
@@ -180,6 +181,15 @@ lfm_vl() {
   test_image
 }
 
+# LFM2.5-VL text side only — used by examples that don't need vision
+# (e.g. the text-only `llama-crab-server` example). The mmproj from
+# `lfm-vl` is skipped to keep the download small.
+lfm_text() {
+  local repo="unsloth/LFM2.5-VL-1.6B-GGUF"
+  download_hf "$repo" "LFM2.5-VL-1.6B-Q4_K_M.gguf" \
+    "$MODELS_DIR/LFM2.5-VL-1.6B-Q4_K_M.gguf"
+}
+
 # Embedding model used by examples/embeddings (small BGE).
 bge_small() {
   local repo="CompendiumLabs/bge-small-en-v1.5-gguf"
@@ -194,18 +204,20 @@ case "$target" in
   smol)         smol ;;
   gemma4)       gemma4 ;;
   lfm-vl|lfmvl) lfm_vl ;;
+  lfm-text)     lfm_text ;;
   bge)          bge_small ;;
   test-image)   test_image ;;
   all)
     smol
     gemma4
     lfm_vl
+    lfm_text
     bge_small
     test_image
     ;;
   *)
     echo "unknown target: $target" >&2
-    echo "valid targets: smol, gemma4, lfm-vl, bge, test-image, all" >&2
+    echo "valid targets: smol, gemma4, lfm-vl, lfm-text, bge, test-image, all" >&2
     exit 2
     ;;
 esac

@@ -7,6 +7,8 @@
 #   ./examples/run.sh streaming            # same model, token streaming
 #   ./examples/run.sh vision gemma4        # downloads Gemma 4 + mmproj
 #   ./examples/run.sh vision lfm-vl        # downloads LFM2.5-VL
+#   ./examples/run.sh lfm_vl               # REPL against the LFM VL model
+#   ./examples/run.sh server_lfm           # boots llama-crab-server w/ LFM
 #   ./examples/run.sh embeddings           # downloads BGE-small
 #   ./examples/run.sh tools                # function-calling example
 #
@@ -15,7 +17,7 @@
 # Requirements: cargo (Rust 1.88+) and `hf` from `huggingface_hub` for
 # the first-time download. Set `HF_TOKEN` to use gated models.
 #
-# Compatible with bash 3.2 (the version Apple ships in /bin/bash).
+# Written for bash 3.2, the version Apple ships in /bin/bash.
 
 set -euo pipefail
 
@@ -48,6 +50,7 @@ example_target_bin() {
     vision)            echo "vision_model|vision" ;;
     mtmd)              echo "vision_model|mtmd" ;;
     lfm_vl)            echo "lfm-vl|run_lfm_vl" ;;
+    server_lfm)        echo "lfm-text|run_server_lfm" ;;
     *) return 1 ;;
   esac
 }
@@ -75,7 +78,8 @@ if [[ $# -lt 1 ]]; then
   echo >&2
   echo "Available examples:" >&2
   for ex in quickstart streaming chat stateful_chat simple structured tools \
-            embeddings embedding_search reranker speculative vision mtmd lfm_vl; do
+            embeddings embedding_search reranker speculative vision mtmd lfm_vl \
+            server_lfm; do
     printf "  %-18s  (downloads + runs the binary)\n" "$ex" >&2
   done
   echo >&2
@@ -90,7 +94,7 @@ if ! mapping="$(example_target_bin "$example")"; then
   echo "unknown example: $example" >&2
   echo "available: quickstart, streaming, chat, stateful_chat, simple, structured, tools," >&2
   echo "           embeddings, embedding_search, reranker, speculative," >&2
-  echo "           vision, mtmd" >&2
+  echo "           vision, mtmd, lfm_vl, server_lfm" >&2
   exit 2
 fi
 
@@ -114,6 +118,7 @@ else
     smol) model_args=("$SMOL_MODEL") ;;
     bge)  model_args=("$BGE_MODEL") ;;
     lfm-vl) model_args=("$LFM_MODEL" "$LFM_MMPROJ" "$TEST_IMAGE") ;;
+    lfm-text) model_args=("$LFM_MODEL") ;;
     none) model_args=() ;;
   esac
 fi

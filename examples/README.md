@@ -16,6 +16,8 @@ required by the example (if missing) and then builds + runs it:
 ./examples/run.sh embedding_search      # BGE-small + cosine ranking
 ./examples/run.sh vision gemma4         # Gemma 4 text + image
 ./examples/run.sh vision lfm-vl         # LFM2.5-VL 1.6B text + image
+./examples/run.sh lfm_vl                # REPL against the LFM VL model
+./examples/run.sh server_lfm            # llama-crab-server w/ LFM2.5-VL
 ./examples/run.sh tools                 # function-calling demo
 ./examples/run.sh structured            # JSON-schema grammar
 ```
@@ -44,7 +46,9 @@ examples/
 ├── tools/                       # function-calling + tool parser
 ├── structured/                  # JSON-schema constrained decoding
 ├── mtmd/                        # multimodal (vision) via mtmd.h
-└── vision/                      # vision via the high-level API
+├── vision/                      # vision via the high-level API
+├── lfm_vl_vision/               # LFM2.5-VL multimodal REPL
+└── server_lfm/                  # llama-crab-server wired for LFM2.5-VL
 ```
 
 ## Per-example guide
@@ -64,6 +68,8 @@ examples/
 | `structured`         | any text GGUF                          | varies | `json_schema_grammar()` + `Sampler::grammar` |
 | `mtmd`               | `lmstudio-community/gemma-4-E4B-it-GGUF` | ~5 GB | Raw `mtmd.h` API: bitmap → chunks → eval |
 | `vision`             | same model (or `LFM2.5-VL-1.6B`)       | ~5 GB | High-level `MtmdContext` API |
+| `lfm_vl`             | `unsloth/LFM2.5-VL-1.6B-GGUF`          | ~1 GB | LFM2.5-VL 1.6B multimodal REPL |
+| `server_lfm`         | `unsloth/LFM2.5-VL-1.6B-GGUF`          | ~1 GB | Boots `llama-crab-server` pre-wired for LFM2.5-VL |
 
 The two vision examples both need a vision-language GGUF **and** its
 `mmproj-*.gguf` projector file. `download_models.sh` downloads both.
