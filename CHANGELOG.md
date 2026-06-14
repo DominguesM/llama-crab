@@ -95,7 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Module layout matches `PLAN.md` exactly**. Sub-modules added:
   - `src/sampling/{strategies,grammar,chain,custom}.rs`
   - `src/multimodal/{context,bitmap,chunks}.rs`
-  - `src/chat/{parser,template,tool_call,message,oaicompat}.rs`
+  - `src/chat/{parser,template,tool_call,message}.rs`
   - `src/model/{kv_overrides,buft_overrides,vocab,params}.rs`
   - `src/context/{embeddings,kv_cache,session,sampling_state,params}.rs`
   - `src/high_level/{completion,chat_completion,embedding,rerank,infill,tokenizer,hf_tokenizer}.rs`
@@ -111,7 +111,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New `LlamaContext::logits_ith`, `sampled_token_ith`, `sampled_probs_ith`
   (sampling-state introspection).
 - `chat::parser::ChatParseState` — incremental JSON-object parser
-  used by streaming OAI-compat clients.
+  used by streaming clients.
 - `high_level::embedding::Llama::embed(text, normalize)` — convenience
   helper around the encode + extract_embeddings pipeline.
 - `high_level::rerank::Llama::rerank(query, docs)` — cross-encoder
