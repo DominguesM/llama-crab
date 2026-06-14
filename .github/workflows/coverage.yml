@@ -2,7 +2,7 @@ name: Coverage
 
 on:
   pull_request:
-    branches: [main]
+    branches: [develop, main]
     paths-ignore:
       - 'docs/**'
       - 'README.md'
