@@ -27,11 +27,6 @@ tests/fixtures/*.gguf
 
 # Don't commit generated documentation
 .DS_Store
-docs/book/
-docs/.docusaurus/
-docs/build/
-docs/docs/api/
-docs/static/api/
 
 # Generated JavaScript package artifacts
 node_modules/

@@ -12,10 +12,9 @@ fail() {
 [[ ! -e examples ]] || fail "examples/ must live in the llama-crab-examples repository"
 
 if rg -n 'examples/run\.sh|examples/README\.md|examples/tauri-chat-lfm|examples/[A-Za-z0-9_-]+/Cargo\.toml|"\s*examples/' \
-  Cargo.toml pnpm-workspace.yaml package.json .github tests README.md docs \
+  Cargo.toml pnpm-workspace.yaml package.json .github tests README.md \
   -g '!tests/examples_migration_smoke.sh' -g '!target/**' -g '!node_modules/**' \
-  -g '!docs/build/**' -g '!docs/.docusaurus/**' -g '!docs/static/api/**' \
-  -g '!docs/docs/api/**' >/tmp/llama-crab-examples-migration-rg.out 2>/dev/null; then
+  >/tmp/llama-crab-examples-migration-rg.out 2>/dev/null; then
   cat /tmp/llama-crab-examples-migration-rg.out >&2
   fail "old in-repository examples references remain"
 fi

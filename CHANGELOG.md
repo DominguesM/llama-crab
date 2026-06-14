@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Moved the documentation site out of this repository into a dedicated
+  repository: [DominguesM/llama-crab-docs](https://github.com/DominguesM/llama-crab-docs).
+  The site is now published at
+  <https://dominguesm.github.io/llama-crab-docs/> instead of
+  <https://dominguesm.github.io/llama-crab/>. The `docs/` folder and the
+  `Publish docs site` GitHub Actions workflow have been removed from this
+  repo. README files and crate-level docs throughout this workspace were
+  updated to point at the new URL. The historical Docusaurus source tree
+  is preserved at `legacy-docusaurus/` in the docs repo for reference.
+
 ### Added
 
 - `tauri-plugin-llama-crab`: added a `Config` struct and `init_with_config`

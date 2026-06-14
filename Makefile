@@ -6,7 +6,7 @@
 #   make                # short alias for `cargo build --workspace`
 #   make test           # cargo test --workspace --no-default-features
 #   make clippy         # cargo clippy --workspace --all-targets
-#   make docs           # mdBook + rustdoc
+#   make docs           # cargo doc --workspace --no-deps
 #   make models         # download GGUF fixtures used by integration tests
 #   make status         # show disk usage of the things `make clean` removes
 #   make clean          # full repo clean — removes every build artifact,
@@ -39,9 +39,8 @@ test: ## cargo test --workspace --no-default-features
 clippy: ## cargo clippy --workspace --all-targets -- -D warnings
 	cargo clippy --workspace --all-targets -- -D warnings
 
-docs: ## Build mdBook and rustdoc
+docs: ## Build rustdoc for the workspace
 	cargo doc --workspace --no-deps
-	@if [[ -d docs ]]; then (cd docs && mdbook build); fi
 
 fmt: ## cargo fmt --all
 	cargo fmt --all

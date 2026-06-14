@@ -8,10 +8,10 @@
 #   ./scripts/clean.sh --help          # this message
 #
 # Designed to back `make clean` — there are no other flags.  Anything
-# `cargo build`, `pnpm install` or `docusaurus build` can recreate is
-# considered disposable.  The bundled llama.cpp submodule is never
-# touched, and `.git/` is never inspected.  The script always asks
-# before deleting anything (unless --dry-run is passed).
+# `cargo build` or `pnpm install` can recreate is considered disposable.
+# The bundled llama.cpp submodule is never touched, and `.git/` is
+# never inspected.  The script always asks before deleting anything
+# (unless --dry-run is passed).
 #
 # Written for bash 3.2, the version Apple ships in /bin/bash.
 
@@ -125,16 +125,7 @@ while IFS= read -r d; do [[ -n "$d" ]] && node_paths+=("$d"); done \
 while IFS= read -r d; do [[ -n "$d" ]] && node_paths+=("$d"); done \
   < <(find_shallow -type d -name gen)
 
-# Generated documentation trees (mdBook, Docusaurus, rustdoc mirror).
-for d in \
-  "$ROOT/docs/book" \
-  "$ROOT/docs/.docusaurus" \
-  "$ROOT/docs/build" \
-  "$ROOT/docs/docs/api" \
-  "$ROOT/docs/static/api"
-do
-  [[ -e "$d" ]] && docs_paths+=("$d")
-done
+# Generated documentation trees (mdBook, rustdoc mirror).
 while IFS= read -r d; do [[ -n "$d" ]] && docs_paths+=("$d"); done \
   < <(find_shallow -type d -name book)
 

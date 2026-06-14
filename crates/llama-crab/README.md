@@ -40,12 +40,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 - Mobile presets and packaging profiles for Android and iOS.
 
 For the full feature table, backend flags and mobile build details, see the
-[user guide](https://dominguesm.github.io/llama-crab/).
+[user guide](https://dominguesm.github.io/llama-crab-docs/).
 
 ## Resources
 
 - [API reference (docs.rs)](https://docs.rs/llama-crab)
-- [User guide](https://dominguesm.github.io/llama-crab/)
+- [User guide](https://dominguesm.github.io/llama-crab-docs/)
 - [Examples repository](https://github.com/DominguesM/llama-crab-examples)
 - [Workspace README](../../README.md)
 

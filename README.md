@@ -29,7 +29,7 @@ cargo install llama-crab-server --features mtmd --force
 ```
 
 For backend selection (Metal, CUDA, Vulkan, ROCm, OpenCL, ...), see the
-[installation guide](https://dominguesm.github.io/llama-crab/installation/).
+[installation guide](https://dominguesm.github.io/llama-crab-docs/installation/).
 
 ### Quickstart
 
@@ -77,17 +77,13 @@ Runnable end-to-end examples live in the separate
 
 ### Documentation
 
-- [User guide](https://dominguesm.github.io/llama-crab/) — installation, examples, server, multimodal and Tauri guides.
+- [User guide](https://dominguesm.github.io/llama-crab-docs/) — installation, examples, server, multimodal and Tauri guides.
 - [API reference (Rust)](https://docs.rs/llama-crab) — published `rustdoc`.
-- [Examples](https://dominguesm.github.io/llama-crab/examples/) — guide for the runnable example crates.
-- [Troubleshooting](https://dominguesm.github.io/llama-crab/troubleshooting/) — common build and runtime issues.
+- [Examples](https://dominguesm.github.io/llama-crab-docs/examples/) — guide for the runnable example crates.
+- [Troubleshooting](https://dominguesm.github.io/llama-crab-docs/troubleshooting/) — common build and runtime issues.
 
-To work on the docs locally:
-
-```bash
-pnpm --dir docs install
-pnpm --dir docs start
-```
+The documentation site is now maintained in a separate repository:
+[`DominguesM/llama-crab-docs`](https://github.com/DominguesM/llama-crab-docs).
 
 ### Contributing
 
