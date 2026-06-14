@@ -1,8 +1,9 @@
 //! DTO contract tests for the Tauri plugin.
 
 use tauri_plugin_llama_crab::{
-    ChatCompletionRequest, ChatMessage, CompletionRequest, EmbeddingInput, EmbeddingRequest,
-    LoadModelRequest, MobilePresetName, ModelKind, PoolingName, RerankRequest, TokenizeRequest,
+    ChatCompletionChunk, ChatCompletionRequest, ChatMessage, CompletionChunkFrame,
+    CompletionRequest, EmbeddingInput, EmbeddingRequest, LoadModelRequest, LoadedModelInfo,
+    MobilePresetName, ModelKind, PoolingName, RerankRequest, TokenizeRequest,
 };
 
 #[test]
@@ -47,6 +48,63 @@ fn load_model_request_accepts_runtime_feature_options() {
     assert_eq!(request.pooling, Some(PoolingName::Mean));
     assert_eq!(request.embeddings, Some(true));
     assert_eq!(request.mmproj_path.as_deref(), Some("/models/mmproj.gguf"));
+}
+
+#[test]
+fn loaded_model_responses_keep_public_snake_case_fields() {
+    let info = LoadedModelInfo::new(
+        "local".into(),
+        "/models/tiny.gguf".into(),
+        Some(ModelKind::Multimodal),
+        Some("balanced".into()),
+        Some("mean".into()),
+        Some("/models/mmproj.gguf".into()),
+    );
+
+    let info_value = serde_json::to_value(&info).unwrap();
+    assert_eq!(info_value["owned_by"], "llama-crab");
+    assert_eq!(info_value["mobile_preset"], "balanced");
+    assert_eq!(info_value["mmproj_path"], "/models/mmproj.gguf");
+    assert!(info_value.get("ownedBy").is_none());
+    assert!(info_value.get("mobilePreset").is_none());
+    assert!(info_value.get("mmprojPath").is_none());
+
+    let response_value = serde_json::to_value(info.load_response()).unwrap();
+    assert_eq!(response_value["owned_by"], "llama-crab");
+    assert_eq!(response_value["mobile_preset"], "balanced");
+    assert_eq!(response_value["mmproj_path"], "/models/mmproj.gguf");
+    assert!(response_value.get("ownedBy").is_none());
+    assert!(response_value.get("mobilePreset").is_none());
+    assert!(response_value.get("mmprojPath").is_none());
+}
+
+#[test]
+fn stream_chunk_frames_serialize_request_id_for_tauri_client() {
+    let chat_value = serde_json::to_value(ChatCompletionChunk {
+        id: "chatcmpl-1".into(),
+        object: "chat.completion.chunk",
+        created: 0,
+        model: "local".into(),
+        choices: vec![],
+        usage: None,
+        request_id: Some("req-1".into()),
+    })
+    .unwrap();
+    assert_eq!(chat_value["requestId"], "req-1");
+    assert!(chat_value.get("request_id").is_none());
+
+    let completion_value = serde_json::to_value(CompletionChunkFrame {
+        id: "cmpl-1".into(),
+        object: "text_completion.chunk",
+        created: 0,
+        model: "local".into(),
+        choices: vec![],
+        usage: None,
+        request_id: Some("req-1".into()),
+    })
+    .unwrap();
+    assert_eq!(completion_value["requestId"], "req-1");
+    assert!(completion_value.get("request_id").is_none());
 }
 
 #[test]

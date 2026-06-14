@@ -385,24 +385,29 @@ fn run_chat_stream(
                 .collect::<Vec<_>>();
 
             if (!chunk.text.is_empty() && !tool_stream.in_call()) || !tool_calls.is_empty() {
-                let _ = on_chunk.send(ChatCompletionChunk {
-                    id: id.clone(),
-                    object: "chat.completion.chunk",
-                    created,
-                    model: request.model.clone(),
-                    choices: vec![ChatChunkChoice {
-                        index: 0,
-                        delta: ChatChunkDelta {
-                            role: None,
-                            content: (!tool_stream.in_call() && !chunk.text.is_empty())
-                                .then_some(chunk.text.clone()),
-                            tool_calls,
-                        },
-                        finish_reason: None,
-                    }],
-                    usage: None,
-                    request_id: Some(request_id.clone()),
-                });
+                if on_chunk
+                    .send(ChatCompletionChunk {
+                        id: id.clone(),
+                        object: "chat.completion.chunk",
+                        created,
+                        model: request.model.clone(),
+                        choices: vec![ChatChunkChoice {
+                            index: 0,
+                            delta: ChatChunkDelta {
+                                role: None,
+                                content: (!tool_stream.in_call() && !chunk.text.is_empty())
+                                    .then_some(chunk.text.clone()),
+                                tool_calls,
+                            },
+                            finish_reason: None,
+                        }],
+                        usage: None,
+                        request_id: Some(request_id.clone()),
+                    })
+                    .is_err()
+                {
+                    return StreamControl::Stop;
+                }
             }
 
             if cancel.load(Ordering::Relaxed) {
@@ -413,20 +418,8 @@ fn run_chat_stream(
         },
     );
 
-    let finish_reason = result
-        .as_ref()
-        .ok()
-        .map(|message| {
-            if message.text.is_empty() {
-                "stop"
-            } else if tool_stream.completed_count() > 0 {
-                "tool_calls"
-            } else {
-                "stop"
-            }
-        })
-        .unwrap_or("stop")
-        .to_string();
+    let finish_reason =
+        chat_stream_finish_reason(result.as_ref().ok(), tool_stream.completed_count()).to_string();
 
     for delta in tool_stream.finish() {
         let _ = on_chunk.send(ChatCompletionChunk {
@@ -543,13 +536,18 @@ fn run_completion_stream(
         &request.structured,
         |chunk| {
             if !chunk.text.is_empty() || chunk.stop_reason.is_some() {
-                let _ = on_chunk.send(completion_chunk_frame(
-                    &id,
-                    created,
-                    &model,
-                    &request_id,
-                    chunk,
-                ));
+                if on_chunk
+                    .send(completion_chunk_frame(
+                        &id,
+                        created,
+                        &model,
+                        &request_id,
+                        chunk,
+                    ))
+                    .is_err()
+                {
+                    return StreamControl::Stop;
+                }
             }
             if cancel.load(Ordering::Relaxed) {
                 StreamControl::Stop
@@ -582,6 +580,17 @@ fn completion_chunk_frame(
         }],
         usage: None,
         request_id: Some(request_id.into()),
+    }
+}
+
+fn chat_stream_finish_reason(
+    result: Option<&Completion>,
+    completed_tool_calls: usize,
+) -> &'static str {
+    match result {
+        Some(_) if completed_tool_calls > 0 => "tool_calls",
+        Some(completion) => stop_reason(completion.stop_reason),
+        None => "stop",
     }
 }
 
@@ -774,4 +783,36 @@ fn base64_encode(bytes: &[u8]) -> String {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use llama_crab::StopReason;
+
+    fn completion(stop_reason: StopReason) -> Completion {
+        Completion {
+            text: "partial".into(),
+            n_tokens: 1,
+            stop_reason,
+            logprobs: None,
+        }
+    }
+
+    #[test]
+    fn chat_stream_finish_reason_preserves_length_stop_reason() {
+        let completion = completion(StopReason::Length);
+
+        assert_eq!(chat_stream_finish_reason(Some(&completion), 0), "length");
+    }
+
+    #[test]
+    fn chat_stream_finish_reason_reports_tool_calls_when_tools_completed() {
+        let completion = completion(StopReason::Stop);
+
+        assert_eq!(
+            chat_stream_finish_reason(Some(&completion), 1),
+            "tool_calls"
+        );
+    }
 }

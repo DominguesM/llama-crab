@@ -37,7 +37,7 @@ required-features = ["mtmd"]
 workspace = true
 
 [dependencies]
-llama-crab-sys = { path = "../llama-crab-sys", version = "0.1.4", default-features = false }
+llama-crab-sys.workspace = true
 thiserror = "1"
 tracing = "0.1"
 tracing-core = "0.1"

@@ -23,6 +23,11 @@ pub async fn load_model(
         .id
         .clone()
         .unwrap_or_else(|| Uuid::new_v4().to_string());
+    if state.model_info(&id).is_some() {
+        return Err(PluginError::invalid_request(format!(
+            "model `{id}` is already loaded"
+        )));
+    }
     let info = LoadedModelInfo::new(
         id,
         payload.path.clone(),
@@ -89,11 +94,10 @@ pub async fn stream_chat_completion(
         let request_id = request_id.clone();
         move || worker.stream_chat_completion(request_id, payload, cancel, on_chunk)
     })
-    .await
-    .map_err(|error| PluginError::worker(error.to_string()))?;
+    .await;
 
     state.remove_request(&request_id);
-    result
+    result.map_err(|error| PluginError::worker(error.to_string()))?
 }
 
 #[tauri::command]
@@ -120,11 +124,10 @@ pub async fn stream_completion(
         let request_id = request_id.clone();
         move || worker.stream_completion(request_id, payload, cancel, on_chunk)
     })
-    .await
-    .map_err(|error| PluginError::worker(error.to_string()))?;
+    .await;
 
     state.remove_request(&request_id);
-    result
+    result.map_err(|error| PluginError::worker(error.to_string()))?
 }
 
 #[tauri::command]

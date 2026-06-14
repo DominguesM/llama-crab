@@ -173,7 +173,6 @@ impl LoadModelRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct LoadModelResponse {
     pub id: String,
     pub object: &'static str,
@@ -191,7 +190,6 @@ pub struct LoadModelResponse {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct LoadedModelInfo {
     pub id: String,
     pub object: &'static str,
@@ -718,7 +716,7 @@ pub struct ChatCompletionChunk {
     pub model: String,
     pub choices: Vec<ChatChunkChoice>,
     pub usage: Option<Usage>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "requestId", skip_serializing_if = "Option::is_none")]
     pub request_id: Option<String>,
 }
 
@@ -784,7 +782,7 @@ pub struct CompletionChunkFrame {
     pub model: String,
     pub choices: Vec<CompletionChunkChoice>,
     pub usage: Option<Usage>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "requestId", skip_serializing_if = "Option::is_none")]
     pub request_id: Option<String>,
 }
 
