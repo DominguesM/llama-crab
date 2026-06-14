@@ -348,7 +348,14 @@ fn build_llama_cpp(
     } else {
         dst.define("GGML_CUDA", "OFF");
     }
-    dst.define("GGML_METAL", if features.metal { "ON" } else { "OFF" });
+    dst.define(
+        "GGML_METAL",
+        if features.metal && os == TargetOs::Macos {
+            "ON"
+        } else {
+            "OFF"
+        },
+    );
     dst.define("GGML_VULKAN", if features.vulkan { "ON" } else { "OFF" });
     dst.define("GGML_HIP", if features.rocm { "ON" } else { "OFF" });
     dst.define("GGML_OPENCL", if features.opencl { "ON" } else { "OFF" });

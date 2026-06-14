@@ -1178,7 +1178,7 @@ fn run_chat_multimodal(
         .ok_or_else(|| "multimodal projector is not initialized".to_string())?;
     let counts = request.choice_counts()?;
     let marker = default_media_marker();
-    let prompt = request.chat_prompt_with_media_marker(&marker)?;
+    let prompt = request.chat_prompt_with_media_marker(marker)?;
     let prompt_tokens = llama
         .model()
         .tokenize(&prompt, true, true)
@@ -1254,7 +1254,7 @@ fn run_chat_stream_multimodal(
     let id = format!("chatcmpl-{}", unix_timestamp());
     let created = unix_timestamp();
     let marker = default_media_marker();
-    let prompt = match request.chat_prompt_with_media_marker(&marker) {
+    let prompt = match request.chat_prompt_with_media_marker(marker) {
         Ok(prompt) => prompt,
         Err(err) => {
             let _ = chunks.send(Err(err));
@@ -2011,10 +2011,10 @@ fn validate_multimodal_request(
     }
     #[cfg(not(feature = "mtmd"))]
     {
-        return Err(
+        Err(
             "multimodal chat content requires llama-crab-server built with the 'mtmd' feature"
                 .to_string(),
-        );
+        )
     }
     #[cfg(feature = "mtmd")]
     {
