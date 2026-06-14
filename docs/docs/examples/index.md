@@ -4,15 +4,19 @@ title: Examples
 
 # Examples
 
-The `examples/` directory contains standalone Cargo packages that demonstrate
-the public Rust APIs. Prefer the wrapper first:
+Runnable examples live in the separate
+[`llama-crab-examples`](https://github.com/DominguesM/llama-crab-examples)
+repository. Clone it when you want executable examples that depend on the
+published crates and npm packages:
 
 ```bash
-./examples/run.sh quickstart
+git clone https://github.com/DominguesM/llama-crab-examples
+cd llama-crab-examples
+./run.sh quickstart
 ```
 
-It resolves the model target, calls `./scripts/download_models.sh`, then runs the
-right binary in release mode.
+The wrapper resolves the model target, calls `./scripts/download_models.sh`,
+then runs the right binary in release mode.
 
 ## Example groups
 
@@ -27,7 +31,7 @@ right binary in release mode.
 Without arguments, the wrapper prints the available example names:
 
 ```bash
-./examples/run.sh
+./run.sh
 ```
 
 ## Model storage
@@ -36,7 +40,7 @@ Downloaded files are stored in `./models/`. If the file is already present,
 download is skipped. To skip download checks entirely:
 
 ```bash
-LLAMA_CRAB_SKIP_DOWNLOAD=1 ./examples/run.sh quickstart
+LLAMA_CRAB_SKIP_DOWNLOAD=1 ./run.sh quickstart
 ```
 
 ## Direct Cargo runs

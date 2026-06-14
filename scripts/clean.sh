@@ -1,19 +1,18 @@
 #!/usr/bin/env bash
-# Clean up build artifacts, downloaded GGUF models and Cargo cache.
+# Wipe every build artifact, downloaded model, JS dependency, generated
+# documentation, IDE folder and Cargo cache under the repository.
 #
 # Usage:
-#   ./scripts/clean.sh                # build artifacts + models
-#   ./scripts/clean.sh --keep-models  # just build artifacts
-#   ./scripts/clean.sh --only-models  # just downloaded GGUF files
-#   ./scripts/clean.sh --all          # everything, including cargo registry
-#   ./scripts/clean.sh --dry-run      # show what would be removed
+#   ./scripts/clean.sh                 # full repo clean (asks first)
+#   ./scripts/clean.sh --dry-run       # show what would be removed
+#   ./scripts/clean.sh --help          # this message
 #
-# After the first `cargo build` the `target/` directory typically holds
-# 5-15 GB; downloaded GGUF models another 5-8 GB.  `clean.sh --all` is
-# the nuclear option and frees the most space (it also wipes the cargo
-# registry cache, which cargo will re-download next build).
+# Designed to back `make clean` — there are no other flags.  Anything
+# `cargo build`, `pnpm install` or `docusaurus build` can recreate is
+# considered disposable.  The bundled llama.cpp submodule is never
+# touched, and `.git/` is never inspected.  The script always asks
+# before deleting anything (unless --dry-run is passed).
 #
-# The script always asks for confirmation before deleting anything.
 # Written for bash 3.2, the version Apple ships in /bin/bash.
 
 set -euo pipefail
@@ -23,31 +22,20 @@ cd "$ROOT"
 
 # --- parse args ---------------------------------------------------------
 
-KEEP_MODELS=0
-ONLY_MODELS=0
-ALL=0
 DRY_RUN=0
 
 for arg in "$@"; do
   case "$arg" in
-    --keep-models) KEEP_MODELS=1 ;;
-    --only-models) ONLY_MODELS=1 ;;
-    --all)         ALL=1 ;;
     --dry-run)     DRY_RUN=1 ;;
     -h|--help)
-      sed -n '2,12p' "$0" | sed 's/^# \?//'
+      sed -n '2,11p' "$0" | sed 's/^# \?//'
       exit 0
       ;;
     *) echo "unknown flag: $arg" >&2; exit 2 ;;
   esac
 done
 
-if [[ $KEEP_MODELS -eq 1 && $ONLY_MODELS -eq 1 ]]; then
-  echo "--keep-models and --only-models are mutually exclusive" >&2
-  exit 2
-fi
-
-# --- inventory -----------------------------------------------------------
+# --- helpers ------------------------------------------------------------
 
 # Sum the on-disk size of every path that would be removed.  Uses
 # du -sk because both BSD and GNU du accept it.  Paths are passed as
@@ -75,51 +63,140 @@ human() {
   }'
 }
 
+# find wrapper that prunes .git directories and the bundled llama.cpp
+# submodule so we never inspect (or delete) versioned code.  The
+# *contents* of `node_modules` and `target` directories are also pruned
+# (the parents themselves are still enumerated and later removed) so
+# the secondary passes don't have to walk thousands of nested
+# node_modules created by pnpm's symlink layout.
+find_clean() {
+  find "$ROOT" \
+    \( \
+      -path "$ROOT/.git" -o \
+      -path "*/.git" -o \
+      -path "$ROOT/crates/llama-crab-sys/llama.cpp" -o \
+      -path "*/llama-crab-sys/llama.cpp" -o \
+      -path "*/llama-crab-sys/llama.cpp/*" -o \
+      -path "*/node_modules/*" -o \
+      -path "*/target/*" \
+    \) -prune -o \
+    "$@" -print 2>/dev/null
+}
+
+# Like find_clean but additionally prunes the parent node_modules /
+# target directories themselves (their contents are already gone) so
+# the secondary passes don't print them as `dist`/`gen` matches.
+find_shallow() {
+  find "$ROOT" \
+    \( \
+      -path "$ROOT/.git" -o \
+      -path "*/.git" -o \
+      -path "$ROOT/crates/llama-crab-sys/llama.cpp" -o \
+      -path "*/llama-crab-sys/llama.cpp" -o \
+      -path "*/llama-crab-sys/llama.cpp/*" -o \
+      -path "*/node_modules" -o \
+      -path "*/node_modules/*" -o \
+      -path "*/target" -o \
+      -path "*/target/*" \
+    \) -prune -o \
+    "$@" -print 2>/dev/null
+}
+
+# --- inventory -----------------------------------------------------------
+
 build_paths=()
-if [[ $ONLY_MODELS -eq 0 ]]; then
-  build_paths+=("$ROOT/target")
-fi
-
+node_paths=()
+docs_paths=()
+temp_paths=()
+ide_paths=()
 model_paths=()
-if [[ $KEEP_MODELS -eq 0 ]]; then
-  model_paths+=("$ROOT/models")
-  # Test fixture GGUF (if any)
-  for f in "$ROOT"/tests/fixtures/*.gguf; do
-    [[ -f "$f" ]] && model_paths+=("$f")
-  done
-fi
-
 cargo_paths=()
-if [[ $ALL -eq 1 && $ONLY_MODELS -eq 0 ]]; then
-  # The cargo registry cache, shared across all Rust projects on the
-  # machine.  Wiping it will force cargo to re-download every crate on
-  # the next build.
-  cargo_home="${CARGO_HOME:-$HOME/.cargo}"
-  cargo_paths+=("$cargo_home/registry")
-  cargo_paths+=("$cargo_home/git")
-  # Sccache / build cache if present
-  for d in "$ROOT/.cargo" "$ROOT/.sccache"; do
-    [[ -d "$d" ]] && cargo_paths+=("$d")
-  done
-fi
+
+# Cargo target/ directories anywhere in the tree (workspace root,
+# src-tauri/ inside the Tauri example, etc.).
+while IFS= read -r d; do [[ -n "$d" ]] && build_paths+=("$d"); done \
+  < <(find_clean -type d -name target)
+
+# JS dependencies and build outputs.
+while IFS= read -r d; do [[ -n "$d" ]] && node_paths+=("$d"); done \
+  < <(find_clean -type d -name node_modules)
+while IFS= read -r d; do [[ -n "$d" ]] && node_paths+=("$d"); done \
+  < <(find_shallow -type d -name dist)
+while IFS= read -r d; do [[ -n "$d" ]] && node_paths+=("$d"); done \
+  < <(find_shallow -type d -name gen)
+
+# Generated documentation trees (mdBook, Docusaurus, rustdoc mirror).
+for d in \
+  "$ROOT/docs/book" \
+  "$ROOT/docs/.docusaurus" \
+  "$ROOT/docs/build" \
+  "$ROOT/docs/docs/api" \
+  "$ROOT/docs/static/api"
+do
+  [[ -e "$d" ]] && docs_paths+=("$d")
+done
+while IFS= read -r d; do [[ -n "$d" ]] && docs_paths+=("$d"); done \
+  < <(find_shallow -type d -name book)
+
+# Scattered scratch files: macOS metadata, log output, rustfmt backups,
+# MSVC debug symbols, cargo-mutants data.
+while IFS= read -r f; do [[ -n "$f" ]] && temp_paths+=("$f"); done \
+  < <(find_shallow -type f -name ".DS_Store")
+while IFS= read -r f; do [[ -n "$f" ]] && temp_paths+=("$f"); done \
+  < <(find_shallow -type f -name "*.log")
+while IFS= read -r f; do [[ -n "$f" ]] && temp_paths+=("$f"); done \
+  < <(find_shallow -type f -name "*.rs.bk")
+while IFS= read -r f; do [[ -n "$f" ]] && temp_paths+=("$f"); done \
+  < <(find_shallow -type f -name "*.pdb")
+while IFS= read -r d; do [[ -n "$d" ]] && temp_paths+=("$d"); done \
+  < <(find_shallow -type d -name "mutants.out*")
+
+# IDE folders.
+while IFS= read -r d; do [[ -n "$d" ]] && ide_paths+=("$d"); done \
+  < <(find_shallow -type d -name ".idea")
+while IFS= read -r d; do [[ -n "$d" ]] && ide_paths+=("$d"); done \
+  < <(find_shallow -type d -name ".vscode")
+
+# Downloaded GGUF models and test fixtures.
+[[ -d "$ROOT/models" ]] && model_paths+=("$ROOT/models")
+for f in "$ROOT"/tests/fixtures/*.gguf; do
+  [[ -f "$f" ]] && model_paths+=("$f")
+done
+
+# The cargo registry cache, shared across all Rust projects on the
+# machine.  Wiping it forces cargo to re-download every crate on the
+# next build.
+cargo_home="${CARGO_HOME:-$HOME/.cargo}"
+[[ -d "$cargo_home/registry" ]] && cargo_paths+=("$cargo_home/registry")
+[[ -d "$cargo_home/git" ]]      && cargo_paths+=("$cargo_home/git")
+for d in "$ROOT/.cargo" "$ROOT/.sccache"; do
+  [[ -d "$d" ]] && cargo_paths+=("$d")
+done
 
 # --- report -------------------------------------------------------------
 
 build_kb=$(sum_paths "${build_paths[@]+"${build_paths[@]}"}")
+node_kb=$(sum_paths  "${node_paths[@]+"${node_paths[@]}"}")
+docs_kb=$(sum_paths  "${docs_paths[@]+"${docs_paths[@]}"}")
+temp_kb=$(sum_paths  "${temp_paths[@]+"${temp_paths[@]}"}")
+ide_kb=$(sum_paths   "${ide_paths[@]+"${ide_paths[@]}"}")
 model_kb=$(sum_paths "${model_paths[@]+"${model_paths[@]}"}")
 cargo_kb=$(sum_paths "${cargo_paths[@]+"${cargo_paths[@]}"}")
-total_kb=$((build_kb + model_kb + cargo_kb))
+total_kb=$((build_kb + node_kb + docs_kb + temp_kb + ide_kb + model_kb + cargo_kb))
 
 echo "🦀 llama-crab cleanup"
 echo
 echo "  Build artifacts (target/):  $(human $build_kb) across ${#build_paths[@]} path(s)"
+echo "  JS deps/builds:             $(human $node_kb) across ${#node_paths[@]} path(s)"
+echo "  Generated docs:             $(human $docs_kb) across ${#docs_paths[@]} path(s)"
+echo "  Temp / scratch files:       $(human $temp_kb) across ${#temp_paths[@]} path(s)"
+echo "  IDE folders:                $(human $ide_kb) across ${#ide_paths[@]} path(s)"
 echo "  Downloaded models:          $(human $model_kb) across ${#model_paths[@]} path(s)"
 echo "  Cargo registry + cache:     $(human $cargo_kb) across ${#cargo_paths[@]} path(s)"
 echo "  ----------------------------------------"
 echo "  Total to remove:            $(human $total_kb)"
 echo
 
-# Confirm before deleting.
 if [[ $DRY_RUN -eq 1 ]]; then
   echo "(dry-run — no changes made)"
   exit 0
@@ -147,12 +224,16 @@ remove() {
 }
 
 for p in "${build_paths[@]+"${build_paths[@]}"}"; do remove "$p"; done
+for p in "${node_paths[@]+"${node_paths[@]}"}";  do remove "$p"; done
+for p in "${docs_paths[@]+"${docs_paths[@]}"}";  do remove "$p"; done
+for p in "${temp_paths[@]+"${temp_paths[@]}"}";  do remove "$p"; done
+for p in "${ide_paths[@]+"${ide_paths[@]}"}";    do remove "$p"; done
 for p in "${model_paths[@]+"${model_paths[@]}"}"; do remove "$p"; done
 for p in "${cargo_paths[@]+"${cargo_paths[@]}"}"; do remove "$p"; done
 
 # Recreate the model directory so the download script can write into it
 # without a re-creation step.
-[[ $KEEP_MODELS -eq 0 && $ONLY_MODELS -eq 0 ]] && mkdir -p "$ROOT/models"
+mkdir -p "$ROOT/models"
 
 echo
 echo "✓ Done. Disk freed: $(human $total_kb)"

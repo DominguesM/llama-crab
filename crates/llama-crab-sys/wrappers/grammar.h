@@ -16,7 +16,7 @@ extern "C" {
 //
 // `force_gbnf` (when non-zero) keeps the grammar in the canonical
 // GBNF form even when the input is simple enough to be expressed without
-// backtracking. In v0.1.300 this returns non-zero unless the upstream
+// backtracking. In v0.1.4 this returns non-zero unless the upstream
 // implementation is explicitly compiled in.
 int32_t llama_rs_json_schema_to_grammar(
     const char * json_schema,

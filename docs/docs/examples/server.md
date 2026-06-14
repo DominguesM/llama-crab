@@ -21,20 +21,19 @@ Then run it directly:
 llama-crab-server --model models/qwen2.5-0.5b-instruct-q4_k_m.gguf
 ```
 
-The examples below are repository wrappers for local development and smoke
-testing.
+The examples below use the wrapper from the `llama-crab-examples` repository.
 
 ## LFM server wrapper
 
 ```bash
-./examples/run.sh server_lfm
+./run.sh server_lfm
 ```
 
 This starts the server with the LFM2.5-VL text GGUF. Pass server flags after
 `--`:
 
 ```bash
-./examples/run.sh server_lfm -- --port 9090 --n-ctx 4096
+./run.sh server_lfm -- --port 9090 --n-ctx 4096
 ```
 
 The server defaults to `127.0.0.1:8080`.
@@ -76,7 +75,7 @@ Set `"stream": true` to receive SSE chunks.
 Start:
 
 ```bash
-./examples/run.sh multimodal_http
+./run.sh multimodal_http
 ```
 
 Call:
@@ -110,5 +109,5 @@ llama-crab-server \
 Rerank mode is wrapped by:
 
 ```bash
-./examples/run.sh rerank
+./run.sh rerank
 ```

@@ -10,7 +10,7 @@ turning model output into a Rust-side function call.
 ## Structured JSON
 
 ```bash
-./examples/run.sh structured
+./run.sh structured
 ```
 
 The example:
@@ -26,8 +26,8 @@ This is the right pattern when the response itself must conform to a schema.
 ## Tool call demo
 
 ```bash
-./examples/run.sh tools
-./examples/run.sh tool_calls_qwen
+./run.sh tools
+./run.sh tool_calls_qwen
 ```
 
 The current tool example keeps the runtime simple:

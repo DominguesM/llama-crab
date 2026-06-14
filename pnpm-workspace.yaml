@@ -1,7 +1,6 @@
 packages:
   - "docs"
   - "packages/*"
-  - "examples/tauri-chat-lfm"
 onlyBuiltDependencies:
   - core-js
   - esbuild

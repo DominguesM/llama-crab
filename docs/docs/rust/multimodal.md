@@ -9,7 +9,7 @@ matching `mmproj` projector file.
 
 ```toml
 [dependencies]
-llama-crab = { version = "0.1.300", features = ["mtmd"] }
+llama-crab = { version = "0.1.4", features = ["mtmd"] }
 ```
 
 For source checkout examples and model download helpers, see

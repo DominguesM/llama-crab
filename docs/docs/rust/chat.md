@@ -61,8 +61,8 @@ let response = create_chat_completion_with(&mut llama, &history, BuiltinTemplate
 history.push(ChatMessage::new(Role::Assistant, response.content));
 ```
 
-`examples/stateful_chat/src/main.rs` adds `/clear` and `/save` commands around
-that pattern.
+The `stateful_chat` example in `llama-crab-examples` adds `/clear` and `/save`
+commands around that pattern.
 
 ## Streaming chat
 
@@ -72,7 +72,7 @@ the returned `ChatMessage` contains the final assistant content.
 
 ## Tools
 
-The lower-level chat module has tool definition and parser support. The current
-`examples/tools` binary demonstrates the practical pattern: describe the tool in
-the system prompt, ask the model for a JSON call, parse the JSON, then execute
-the function in Rust.
+The lower-level chat module has tool definition and parser support. The `tools`
+example in `llama-crab-examples` demonstrates the practical pattern: describe
+the tool in the system prompt, ask the model for a JSON call, parse the JSON,
+then execute the function in Rust.

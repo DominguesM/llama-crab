@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.300] - 2026-06-14
+## [0.1.4] - 2026-06-14
 
 ### Added
 
@@ -232,8 +232,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 9 example crates and 3 integration tests covering Gemma 4 and
   LFM2.5-VL.
 
-[Unreleased]: https://github.com/DominguesM/llama-crab/compare/v0.1.300...HEAD
-[0.1.300]: https://github.com/DominguesM/llama-crab/compare/v0.1.201...v0.1.300
+[Unreleased]: https://github.com/DominguesM/llama-crab/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/DominguesM/llama-crab/compare/v0.1.201...v0.1.4
 [0.1.201]: https://github.com/DominguesM/llama-crab/compare/v0.1.2...v0.1.201
 [0.1.2]: https://github.com/DominguesM/llama-crab/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/DominguesM/llama-crab/compare/v0.1.0...v0.1.1

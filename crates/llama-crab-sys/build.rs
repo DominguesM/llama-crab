@@ -260,7 +260,7 @@ fn run_bindgen(manifest_dir: &PathBuf, features: &Features) -> bindgen::Bindings
         // backed by the upstream llguidance library. The feature is accepted
         // for building with llguidance, but no llg_* surface is published here.
         eprintln!(
-            "cargo:warning=llama-crab-sys: llguidance feature has no C-ABI surface in v0.1.300"
+            "cargo:warning=llama-crab-sys: llguidance feature has no C-ABI surface in v0.1.4"
         );
     }
 
@@ -557,7 +557,7 @@ fn build_cpp_wrappers(manifest_dir: &PathBuf, out_dir: &PathBuf, features: &Feat
         file_count += 1;
     }
     if features.common {
-        // v0.1.300 intentionally does not compile local llama_rs_* common
+        // v0.1.4 intentionally does not compile local llama_rs_* common
         // shims. They were placeholders and could report success without
         // invoking the real upstream common implementation.
     }

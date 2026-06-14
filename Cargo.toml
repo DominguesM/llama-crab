@@ -5,26 +5,10 @@ members = [
     "crates/llama-crab",
     "crates/llama-crab-server",
     "crates/tauri-plugin-llama-crab",
-    "examples/quickstart",
-    "examples/stateful_chat",
-    "examples/embedding_search",
-    "examples/simple",
-    "examples/streaming",
-    "examples/chat",
-    "examples/embeddings",
-    "examples/reranker",
-    "examples/speculative",
-    "examples/tools",
-    "examples/structured",
-    "examples/mtmd",
-    "examples/vision",
-    "examples/lfm_vl_vision",
-    "examples/server_lfm",
-    "examples/tauri-chat-lfm/src-tauri",
 ]
 
 [workspace.package]
-version = "0.1.300"
+version = "0.1.4"
 edition = "2021"
 rust-version = "1.88"
 license = "MIT"
@@ -77,7 +61,7 @@ wrong_self_convention = "allow"
 needless_collect = "allow"
 
 [workspace.dependencies]
-llama-crab = { path = "crates/llama-crab", version = "0.1.300" }
+llama-crab = { path = "crates/llama-crab", version = "0.1.4" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri = { version = "2", default-features = false }

@@ -16,7 +16,7 @@ The generated API reference is published at
 
 ```toml
 [dependencies]
-llama-crab = "0.1.300"
+llama-crab = "0.1.4"
 ```
 
 Use the published crate version that matches your target release.
@@ -28,7 +28,7 @@ backend by changing features:
 
 ```toml
 [dependencies]
-llama-crab = { version = "0.1.300", default-features = false, features = ["openmp"] }
+llama-crab = { version = "0.1.4", default-features = false, features = ["openmp"] }
 ```
 
 Common feature flags:

@@ -237,7 +237,8 @@ See [Multimodal](https://dominguesm.github.io/llama-crab/rust/multimodal/), [mul
 
 Prompt-lookup speculative decoding is available through the `speculative` module. It can draft candidate tokens from repeated n-grams in the prompt and verify them with the main model.
 
-See the [`speculative`](examples/README.md) example command.
+See the [examples repository](https://github.com/DominguesM/llama-crab-examples)
+for the runnable `speculative` command.
 
 ## Streaming
 
@@ -263,7 +264,7 @@ llama-crab-server \
 ```
 
 From a repository checkout, use `cargo run -p llama-crab-server -- ...`
-instead of the installed binary.
+instead of the installed binary when you are developing the server itself.
 
 Available routes include `/health`, `/v1/models`, `/v1/completions`,
 `/v1/chat/completions`, `/v1/embeddings`, `/v1/rerank`, `/v1/reranking`,
@@ -283,25 +284,19 @@ requests may include `model`; the bundled binary serves the model loaded at star
 
 ## Examples
 
-The repository contains runnable example crates under [`examples/`](examples/README.md). The helper script downloads known-good GGUF fixtures on first run.
+Runnable examples live in the separate
+[`llama-crab-examples`](https://github.com/DominguesM/llama-crab-examples)
+repository. Its helper script downloads known-good GGUF fixtures on first run
+and depends on the published crates/npm packages instead of this source
+workspace.
 
 ```bash
-./examples/run.sh quickstart
-./examples/run.sh chat
-./examples/run.sh stateful_chat
-./examples/run.sh embeddings
-./examples/run.sh embedding_search
-./examples/run.sh rerank
-./examples/run.sh reranker
-./examples/run.sh vision gemma4
-./examples/run.sh vision lfm-vl
-./examples/run.sh mtmd gemma4
-./examples/run.sh tools
-./examples/run.sh tool_calls_qwen
-./examples/run.sh multimodal_http
-./examples/run.sh structured
-./examples/run.sh speculative
-./examples/run.sh streaming
+git clone https://github.com/DominguesM/llama-crab-examples
+cd llama-crab-examples
+./run.sh quickstart
+./run.sh chat
+./run.sh vision lfm-vl
+./run.sh multimodal_http
 ```
 
 Each example is a standalone Cargo crate and can be copied into another project.

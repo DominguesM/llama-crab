@@ -43,5 +43,6 @@ Drop to lower-level modules when you need precise control:
 - `chat` for templates, roles, tools, and rendering.
 - `multimodal` for `mtmd` image/projector handling.
 
-Repository layout, source examples, and build profiles are documented in
-[Development](../contributing/development.md).
+Repository layout and build profiles are documented in
+[Development](../contributing/development.md). Runnable examples live in the
+separate `llama-crab-examples` repository.

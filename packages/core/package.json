@@ -1,9 +1,12 @@
 {
   "name": "@llama-crab/core",
-  "version": "0.1.300",
+  "version": "0.1.4",
   "description": "Core TypeScript contracts and client for llama-crab backends.",
   "type": "module",
   "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "files": ["dist"],
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

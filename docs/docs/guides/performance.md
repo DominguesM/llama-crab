@@ -68,7 +68,7 @@ The default crate features enable `openmp` and `metal`. On non-Apple targets or
 CI, you may want explicit features:
 
 ```toml
-llama-crab = { version = "0.1.300", default-features = false, features = ["openmp"] }
+llama-crab = { version = "0.1.4", default-features = false, features = ["openmp"] }
 ```
 
 Use only one primary accelerator backend unless you have a reason to compile

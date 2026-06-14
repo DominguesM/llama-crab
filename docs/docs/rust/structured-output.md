@@ -59,5 +59,6 @@ schema validator used by your application.
 
 Use structured output when the response itself must match a schema. Use a
 tool-call pattern when the model should choose or populate an action that your
-Rust code will execute. The `examples/tools` program demonstrates a lightweight
-tool pattern using JSON extraction and validation in Rust.
+Rust code will execute. The `tools` example in `llama-crab-examples`
+demonstrates a lightweight tool pattern using JSON extraction and validation in
+Rust.

@@ -1,4 +1,4 @@
-// Small C bridge kept out of bindgen in v0.1.300.
+// Small C bridge kept out of bindgen in v0.1.4.
 // It only succeeds when explicitly compiled with the upstream schema converter.
 
 #include "grammar.h"

@@ -10,7 +10,7 @@ enough for embedding extraction.
 ## Raw embeddings
 
 ```bash
-./examples/run.sh embeddings
+./run.sh embeddings
 ```
 
 Loads `models/bge-small-en-v1.5-q4_k_m.gguf`, enables embeddings on the context,
@@ -32,7 +32,7 @@ cargo run --release --bin embeddings -- \
 ## Semantic search
 
 ```bash
-./examples/run.sh embedding_search
+./run.sh embedding_search
 ```
 
 Embeds a query and a tiny fixed corpus, then sorts documents by cosine
@@ -41,13 +41,13 @@ similarity. The example uses `PoolingType::Cls` for BGE-small.
 You can pass a custom query:
 
 ```bash
-./examples/run.sh embedding_search -- "Which language checks memory safety?"
+./run.sh embedding_search -- "Which language checks memory safety?"
 ```
 
 ## Embedding-based reranker
 
 ```bash
-./examples/run.sh reranker
+./run.sh reranker
 ```
 
 Ranks a small document list by embedding similarity to the fixed query
@@ -56,7 +56,7 @@ Ranks a small document list by embedding similarity to the fixed query
 ## HTTP rerank server
 
 ```bash
-./examples/run.sh rerank
+./run.sh rerank
 ```
 
 Starts `llama-crab-server` with the BGE reranker model and:

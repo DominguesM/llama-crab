@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-// v0.1.300 placeholder. Returns non-zero if compiled directly.
+// v0.1.4 placeholder. Returns non-zero if compiled directly.
 int llama_rs_mtmd_init_helpers(void);
 
 #ifdef __cplusplus

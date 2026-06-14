@@ -21,7 +21,7 @@ For normal applications, prefer the published crate:
 
 ```toml
 [dependencies]
-llama-crab = "0.1.300"
+llama-crab = "0.1.4"
 ```
 
 ## Repository package map
@@ -34,7 +34,6 @@ llama-crab = "0.1.300"
 | `crates/tauri-plugin-llama-crab` | Tauri v2 plugin. |
 | `packages/core` | Shared TypeScript contracts and helpers. |
 | `packages/tauri` | TypeScript Tauri client. |
-| `examples` | Runnable source examples and smoke-test wrappers. |
 | `docs` | Docusaurus documentation site. |
 
 ## Server from checkout
@@ -60,17 +59,21 @@ cargo run -p llama-crab-server --features mtmd -- \
   --mmproj /models/mmproj.gguf
 ```
 
-## Example wrappers
+## Example repository
 
-The `examples/` directory contains standalone Cargo packages that demonstrate
-the public Rust APIs. Prefer the wrapper while validating examples locally:
+Runnable examples live in
+[`llama-crab-examples`](https://github.com/DominguesM/llama-crab-examples),
+not in this source repository. Use that repository when validating example
+workflows locally:
 
 ```bash
-./examples/run.sh quickstart
+git clone https://github.com/DominguesM/llama-crab-examples
+cd llama-crab-examples
+./run.sh quickstart
 ```
 
-It resolves the model target, calls `./scripts/download_models.sh`, then runs
-the right binary in release mode.
+The wrapper resolves the model target, calls `./scripts/download_models.sh`,
+then runs the right binary in release mode.
 
 Useful targets include:
 
@@ -85,14 +88,14 @@ Useful targets include:
 Without arguments, the wrapper prints the available example names:
 
 ```bash
-./examples/run.sh
+./run.sh
 ```
 
 Downloaded model files are stored in `./models/`. If the file is already
 present, download is skipped. To skip download checks entirely:
 
 ```bash
-LLAMA_CRAB_SKIP_DOWNLOAD=1 ./examples/run.sh quickstart
+LLAMA_CRAB_SKIP_DOWNLOAD=1 ./run.sh quickstart
 ```
 
 You can run example binaries directly once model files exist:
@@ -107,7 +110,8 @@ See [Source examples](../examples/index.md) for the detailed example pages.
 
 ## Model download helper
 
-Use the repository helper when you need the same model names as the examples:
+Use the example repository helper when you need the same model names as the
+examples:
 
 ```bash
 ./scripts/download_models.sh smol

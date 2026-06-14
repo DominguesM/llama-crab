@@ -17,7 +17,7 @@ let response = llama.create_completion("Once upon a time", 64)?;
 println!("{}", response.text);
 ```
 
-This mirrors `examples/simple/src/main.rs`.
+This mirrors the `simple` example in the `llama-crab-examples` repository.
 
 ## Completion options
 
@@ -63,7 +63,8 @@ let final_completion = llama.create_completion_stream(
 )?;
 ```
 
-See `examples/streaming/src/main.rs` for the full error-handling version.
+See the `streaming` example in `llama-crab-examples` for the full
+error-handling version.
 
 ## Custom sampler
 

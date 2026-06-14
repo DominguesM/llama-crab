@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Validate packaging without publishing to crates.io"
+        description: "Validate packaging without publishing to crates.io or npm"
         type: boolean
         default: true
 
@@ -14,16 +14,17 @@ permissions:
   contents: read
 
 concurrency:
-  group: crates-release-${{ github.ref }}
+  group: package-release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   publish:
-    name: Publish crates
+    name: Publish crates and npm packages
     runs-on: ubuntu-latest
     env:
       CARGO_TERM_COLOR: always
       CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       DRY_RUN: ${{ inputs.dry_run || 'false' }}
     steps:
       - uses: actions/checkout@v4
@@ -32,17 +33,35 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@1.88
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.0.9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          scope: "@llama-crab"
+          cache: pnpm
+
       - name: Read workspace version
         id: version
         shell: bash
         run: |
-          version=$(python3 - <<'PY'
-          import tomllib
-
-          with open("Cargo.toml", "rb") as f:
-              cargo = tomllib.load(f)
-          print(cargo["workspace"]["package"]["version"])
-          PY
+          version=$(cargo metadata --no-deps --format-version 1 | node -e '
+          let input = "";
+          process.stdin.on("data", (chunk) => input += chunk);
+          process.stdin.on("end", () => {
+            const metadata = JSON.parse(input);
+            const crate = metadata.packages.find((pkg) => pkg.name === "llama-crab");
+            if (!crate) {
+              throw new Error("llama-crab crate not found in cargo metadata");
+            }
+            process.stdout.write(crate.version);
+          });
+          '
           )
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
@@ -56,45 +75,49 @@ jobs:
             exit 1
           fi
 
-          python3 - <<'PY'
-          import pathlib
-          import tomllib
+          node <<'JS'
+          const fs = require("fs");
+          const { execFileSync } = require("child_process");
 
-          root = pathlib.Path(".")
-          with (root / "Cargo.toml").open("rb") as f:
-              workspace = tomllib.load(f)
+          const version = process.env.VERSION;
+          const metadata = JSON.parse(execFileSync("cargo", ["metadata", "--no-deps", "--format-version", "1"], { encoding: "utf8" }));
+          const crateNames = [
+            "llama-crab-sys",
+            "llama-crab",
+            "llama-crab-server",
+            "tauri-plugin-llama-crab",
+          ];
 
-          version = workspace["workspace"]["package"]["version"]
-          crates = {
-              "llama-crab-sys": root / "crates" / "llama-crab-sys" / "Cargo.toml",
-              "llama-crab": root / "crates" / "llama-crab" / "Cargo.toml",
-              "llama-crab-server": root / "crates" / "llama-crab-server" / "Cargo.toml",
+          const crates = new Map(metadata.packages.map((pkg) => [pkg.name, pkg]));
+          for (const crateName of crateNames) {
+            const crate = crates.get(crateName);
+            if (!crate) {
+              throw new Error(`${crateName} is missing from cargo metadata`);
+            }
+            if (crate.version !== version) {
+              throw new Error(`${crateName} version ${crate.version} does not match ${version}`);
+            }
+            if (Array.isArray(crate.publish) && crate.publish.length === 0) {
+              throw new Error(`${crateName} has publish=false`);
+            }
           }
 
-          manifests = {}
-          for crate, path in crates.items():
-              with path.open("rb") as f:
-                  manifest = tomllib.load(f)
-              package = manifest["package"]
-              if package["name"] != crate:
-                  raise SystemExit(f"{path}: expected package name {crate}, got {package['name']}")
-              package_version = version if package.get("version", {}).get("workspace") else package.get("version")
-              if package_version != version:
-                  raise SystemExit(f"{crate}: version {package_version} does not match workspace {version}")
-              if package.get("publish") is False:
-                  raise SystemExit(f"{crate}: publish=false prevents crates.io deployment")
-              manifests[crate] = manifest
+          const packagePaths = ["packages/core/package.json", "packages/tauri/package.json"];
+          for (const packagePath of packagePaths) {
+            const pkg = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+            if (pkg.private === true) {
+              throw new Error(`${pkg.name} is private and cannot be published`);
+            }
+            if (pkg.version !== version) {
+              throw new Error(`${pkg.name} version ${pkg.version} does not match ${version}`);
+            }
+            if (pkg.publishConfig?.access !== "public") {
+              throw new Error(`${pkg.name} must set publishConfig.access=public`);
+            }
+          }
 
-          sys_dep = manifests["llama-crab"]["dependencies"]["llama-crab-sys"]
-          if sys_dep.get("version") != version:
-              raise SystemExit("llama-crab dependency on llama-crab-sys must match the workspace version")
-
-          core_dep = manifests["llama-crab-server"]["dependencies"]["llama-crab"]
-          if core_dep.get("version") != version:
-              raise SystemExit("llama-crab-server dependency on llama-crab must match the workspace version")
-
-          print(f"release metadata ok for {', '.join(crates)} {version}")
-          PY
+          console.log(`release metadata ok for ${crateNames.join(", ")} and @llama-crab npm packages ${version}`);
+          JS
 
       - name: Publish crates
         shell: bash
@@ -104,17 +127,10 @@ jobs:
           set -euo pipefail
 
           version_exists() {
-            python3 - "$1" "$VERSION" <<'PY'
-          import sys
-          import urllib.request
-
-          crate, version = sys.argv[1], sys.argv[2]
-          try:
-              with urllib.request.urlopen(f"https://crates.io/api/v1/crates/{crate}/{version}", timeout=20) as response:
-                  sys.exit(0 if response.status == 200 else 1)
-          except Exception:
-              sys.exit(1)
-          PY
+            curl --fail --silent --show-error \
+              --user-agent "llama-crab-release-ci" \
+              "https://crates.io/api/v1/crates/$1/$VERSION" \
+              >/dev/null
           }
 
           wait_for_crate() {
@@ -133,16 +149,12 @@ jobs:
 
           publish_crate() {
             local crate="$1"
+            local dependency="${2:-}"
             local args=(publish -p "$crate" --no-verify)
 
             if [[ "$DRY_RUN" == "true" ]]; then
-              if [[ "$crate" == "llama-crab" ]] && ! version_exists llama-crab-sys; then
-                echo "::notice::$crate publish dry-run needs llama-crab-sys $VERSION in crates.io; listing package contents instead"
-                cargo package -p "$crate" --list
-                return 0
-              fi
-              if [[ "$crate" == "llama-crab-server" ]] && ! version_exists llama-crab; then
-                echo "::notice::$crate publish dry-run needs llama-crab $VERSION in crates.io; listing package contents instead"
+              if [[ -n "$dependency" ]] && ! version_exists "$dependency"; then
+                echo "::notice::$crate publish dry-run needs $dependency $VERSION in crates.io; listing package contents instead"
                 cargo package -p "$crate" --list
                 return 0
               fi
@@ -168,5 +180,49 @@ jobs:
           }
 
           publish_crate llama-crab-sys
-          publish_crate llama-crab
-          publish_crate llama-crab-server
+          publish_crate llama-crab llama-crab-sys
+          publish_crate llama-crab-server llama-crab
+          publish_crate tauri-plugin-llama-crab llama-crab
+
+      - name: Install npm dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build npm packages
+        run: pnpm --filter @llama-crab/core --filter @llama-crab/tauri build
+
+      - name: Publish npm packages
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          npm_version_exists() {
+            npm view "$1@$VERSION" version --registry https://registry.npmjs.org >/dev/null 2>&1
+          }
+
+          publish_npm_package() {
+            local package="$1"
+
+            if [[ "$DRY_RUN" == "true" ]]; then
+              echo "dry-run publishing $package $VERSION"
+              pnpm --filter "$package" publish --dry-run --access public --no-git-checks
+              return 0
+            fi
+
+            if npm_version_exists "$package"; then
+              echo "$package $VERSION is already published"
+              return 0
+            fi
+
+            if [[ -z "${NPM_TOKEN:-}" ]]; then
+              echo "::error::NPM_TOKEN is required to publish $package"
+              return 1
+            fi
+
+            pnpm --filter "$package" publish --access public --no-git-checks
+          }
+
+          publish_npm_package @llama-crab/core
+          publish_npm_package @llama-crab/tauri
