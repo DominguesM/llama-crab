@@ -231,7 +231,7 @@ Supported workflows include:
 - Tokenizing text and media together with `MtmdContext`.
 - Evaluating multimodal chunks and continuing generation with normal samplers.
 
-See [Multimodal](docs/en/features/multimodal.md), [`vision`](docs/en/examples/vision.md), [`mtmd`](docs/en/examples/mtmd.md), and the integration tests under [`llama-crab/tests`](llama-crab/tests).
+See [Multimodal](docs/en/features/multimodal.md), [`vision`](docs/en/examples/vision.md), [`mtmd`](docs/en/examples/mtmd.md), and the integration tests under [`crates/llama-crab/tests`](crates/llama-crab/tests).
 
 ## Speculative Decoding
 
@@ -324,6 +324,7 @@ mkdocs serve --config-file mkdocs.yml
 | ----------------------------------------------------------- | ------------------------------------------------------ |
 | [`llama-crab`](https://crates.io/crates/llama-crab)         | Safe high-level API and Rust abstractions.             |
 | [`llama-crab-sys`](https://crates.io/crates/llama-crab-sys) | Low-level FFI package that builds and links llama.cpp. |
+| [`llama-crab-server`](crates/llama-crab-server)             | HTTP server binary for local inference.                |
 
 Most applications should depend on `llama-crab`. Use `llama-crab-sys` only when you need direct access to raw llama.cpp symbols.
 

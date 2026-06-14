@@ -1,9 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
-    "llama-crab-sys",
-    "llama-crab",
-    "llama-crab-server",
+    "crates/llama-crab-sys",
+    "crates/llama-crab",
+    "crates/llama-crab-server",
     "examples/quickstart",
     "examples/stateful_chat",
     "examples/embedding_search",
