@@ -1,7 +1,7 @@
 site_name: llama-crab
 site_description: Bindings Rust seguros, ergonômicos e completos para llama.cpp
 site_author: Contribuidores do llama-crab
-site_url: https://llama-crab.github.io/pt/
+site_url: https://dominguesm.github.io/llama-crab.github.io/pt/
 
 repo_name: DominguesM/llama-crab
 repo_url: https://github.com/DominguesM/llama-crab
@@ -74,10 +74,10 @@ theme:
 extra:
   alternate:
     - name: English
-      link: /en/
+      link: /llama-crab.github.io/en/
       lang: en
     - name: Português (Brasil)
-      link: /pt/
+      link: /llama-crab.github.io/pt/
       lang: pt-BR
   social:
     - icon: fontawesome/brands/github
