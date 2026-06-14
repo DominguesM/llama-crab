@@ -1,0 +1,31 @@
+:root {
+  --ifm-color-primary: #b7410e;
+  --ifm-color-primary-dark: #a53a0d;
+  --ifm-color-primary-darker: #98360c;
+  --ifm-color-primary-darkest: #7d2c0a;
+  --ifm-color-primary-light: #cb4a12;
+  --ifm-color-primary-lighter: #da5520;
+  --ifm-color-primary-lightest: #ef6a35;
+  --ifm-font-family-base: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ifm-font-family-monospace: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  --ifm-code-font-size: 92%;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #ff8a4c;
+  --ifm-color-primary-dark: #ff7430;
+  --ifm-color-primary-darker: #f56927;
+  --ifm-color-primary-darkest: #d95113;
+  --ifm-color-primary-light: #ffa06c;
+  --ifm-color-primary-lighter: #ffb184;
+  --ifm-color-primary-lightest: #ffc7a6;
+}
+
+.hero--primary {
+  background: linear-gradient(135deg, #23262f 0%, #3b2f2f 50%, #15171d 100%);
+}
+
+.markdown table {
+  display: table;
+  width: 100%;
+}

@@ -1,4 +1,4 @@
-# Build the mkdocs-material site and deploy it with GitHub Pages Actions.
+# Build the Docusaurus site and deploy it with GitHub Pages Actions.
 #
 # This workflow publishes the project site for DominguesM/llama-crab at:
 #
@@ -13,11 +13,6 @@
 # - In DominguesM/llama-crab, configure GitHub Pages as:
 #   Settings -> Pages -> Source: GitHub Actions.
 #
-# Layout published by GitHub Pages:
-#
-#     /llama-crab/        <- redirect to /llama-crab/en/
-#     /llama-crab/en/     <- English site (built from docs/mkdocs.yml, docs_dir=en)
-#     /llama-crab/pt/     <- Portuguese site (built from docs/pt/mkdocs.yml, docs_dir=docs)
 name: Publish docs site
 
 'on':
@@ -34,77 +29,29 @@ concurrency:
 
 jobs:
   build:
-    name: Build mkdocs-material site
+    name: Build Docusaurus site
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
         with:
-          python-version: '3.12'
+          version: 11.0.9
 
-      - name: Cache pip
-        uses: actions/cache@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-mkdocs-${{ hashFiles('docs/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-mkdocs-
+          node-version: 22
 
-      - name: Install mkdocs-material
-        run: pip install -r docs/requirements.txt
-
-      - name: Sync shared docs assets
-        run: |
-          rsync -a --delete --exclude '.DS_Store' docs/assets/images/ docs/en/assets/images/
-          rsync -a --delete --exclude '.DS_Store' docs/assets/images/ docs/pt/docs/assets/images/
-          cp docs/assets/css/extra.css docs/en/assets/css/extra.css
-          cp docs/assets/css/extra.css docs/pt/docs/assets/css/extra.css
-
-      - name: Build English site
+      - name: Install dependencies
         working-directory: docs
-        run: mkdocs build --strict --site-dir ../site_root/en
+        run: pnpm install --no-frozen-lockfile
 
-      - name: Build Portuguese site
-        working-directory: docs/pt
-        run: mkdocs build --strict --site-dir ../../site_root/pt
-
-      - name: Add root redirect
-        run: |
-          cat > site_root/index.html <<'HTML'
-          <!doctype html>
-          <html lang="en">
-            <head>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1">
-              <meta http-equiv="refresh" content="0; url=/llama-crab/en/">
-              <link rel="canonical" href="/llama-crab/en/">
-              <title>llama-crab documentation</title>
-              <script>window.location.replace("/llama-crab/en/" + window.location.search + window.location.hash);</script>
-            </head>
-            <body>
-              <p><a href="/llama-crab/en/">Continue to the llama-crab documentation</a>.</p>
-            </body>
-          </html>
-          HTML
-          cat > site_root/404.html <<'HTML'
-          <!doctype html>
-          <html lang="en">
-            <head>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1">
-              <meta http-equiv="refresh" content="0; url=/llama-crab/en/">
-              <link rel="canonical" href="/llama-crab/en/">
-              <title>llama-crab documentation</title>
-            </head>
-            <body>
-              <p><a href="/llama-crab/en/">Continue to the llama-crab documentation</a>.</p>
-            </body>
-          </html>
-          HTML
-          touch site_root/.nojekyll
+      - name: Build documentation
+        working-directory: docs
+        run: pnpm build
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
@@ -112,7 +59,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: site_root
+          path: docs/build
 
   deploy:
     name: Deploy to GitHub Pages
