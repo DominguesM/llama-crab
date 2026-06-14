@@ -66,9 +66,9 @@ jobs:
 
           version = workspace["workspace"]["package"]["version"]
           crates = {
-              "llama-crab-sys": root / "llama-crab-sys" / "Cargo.toml",
-              "llama-crab": root / "llama-crab" / "Cargo.toml",
-              "llama-crab-server": root / "llama-crab-server" / "Cargo.toml",
+              "llama-crab-sys": root / "crates" / "llama-crab-sys" / "Cargo.toml",
+              "llama-crab": root / "crates" / "llama-crab" / "Cargo.toml",
+              "llama-crab-server": root / "crates" / "llama-crab-server" / "Cargo.toml",
           }
 
           manifests = {}

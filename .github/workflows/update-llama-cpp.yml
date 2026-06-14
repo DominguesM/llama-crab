@@ -24,22 +24,22 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
       - name: Update submodule
         run: |
-          cd llama-crab-sys/llama.cpp
+          cd crates/llama-crab-sys/llama.cpp
           git fetch --tags origin
           LATEST=$(git tag --sort=-version:refname | grep -E '^b[0-9]+$' | head -1)
           echo "Latest llama.cpp release: $LATEST"
           echo "LATEST=$LATEST" >> "$GITHUB_ENV"
           git checkout "$LATEST"
-          cd ../..
+          cd ../../..
       - name: Check for changes
         id: check
         run: |
-          if git diff --quiet -- llama-crab-sys/llama.cpp; then
+          if git diff --quiet -- crates/llama-crab-sys/llama.cpp; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
             git switch -c update-llama-cpp
-            git add llama-crab-sys/llama.cpp
+            git add crates/llama-crab-sys/llama.cpp
             git commit -m "chore(sys): bump llama.cpp to $LATEST"
             git push --force-with-lease origin update-llama-cpp
           fi
