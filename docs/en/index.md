@@ -6,7 +6,9 @@ hide:
 
 <div align="center" markdown>
 
-# :material-crab: **llama-crab**
+<img class="llamacrab-home-logo" src="assets/images/logo.webp" alt="llama-crab logo">
+
+# **llama-crab**
 
 **Safe, ergonomic and complete Rust bindings for [`llama.cpp`](https://github.com/ggml-org/llama.cpp).**
 

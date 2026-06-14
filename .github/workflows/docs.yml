@@ -56,6 +56,13 @@ jobs:
       - name: Install mkdocs-material
         run: pip install -r docs/requirements.txt
 
+      - name: Sync shared docs assets
+        run: |
+          rsync -a --delete --exclude '.DS_Store' docs/assets/images/ docs/en/assets/images/
+          rsync -a --delete --exclude '.DS_Store' docs/assets/images/ docs/pt/docs/assets/images/
+          cp docs/assets/css/extra.css docs/en/assets/css/extra.css
+          cp docs/assets/css/extra.css docs/pt/docs/assets/css/extra.css
+
       - name: Build English site
         working-directory: docs
         run: mkdocs build --strict --site-dir ../site_root/en

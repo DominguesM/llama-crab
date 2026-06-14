@@ -14,11 +14,12 @@ docs/
 │   └── mkdocs.yml          # Portuguese configuration
 ├── requirements.txt        # Python dependencies for the build
 ├── assets/
-│   └── css/extra.css       # Custom theme styles
+│   ├── css/extra.css       # Canonical custom theme styles
+│   └── images/             # Canonical logo and optimized icons
 ├── overrides/              # Theme customisation
 │   └── partials/           # (empty by default — extend as needed)
 ├── en/                     # English content
-│   ├── assets/css/extra.css # English copy of custom theme styles
+│   ├── assets/             # English copy of published CSS/images
 │   ├── index.md            # English home
 │   ├── getting-started/    # English getting started
 │   ├── core-concepts/      # English core concepts
@@ -33,7 +34,7 @@ docs/
 └── pt/                     # Portuguese translations (one file per
                             # English page, mirror structure)
     ├── docs/               # Portuguese content
-    │   └── assets/css/extra.css # Portuguese copy of custom theme styles
+    │   └── assets/         # Portuguese copy of published CSS/images
     └── mkdocs.yml
 ```
 
@@ -95,12 +96,20 @@ multi-language documentation:
 - Both configs set `site_url` and `extra.alternate` so the
   language selector in the header links between `/llama-crab/en/`
   and `/llama-crab/pt/`.
-- The English `mkdocs.yml` configures the theme `logo` and
-  `favicon` to point at `assets/images/logo.png` (the canarim-crab
-  mark).
-- `extra_css` must reference files inside each language `docs_dir`,
-  so `docs/assets/css/extra.css` is mirrored into
-  `docs/en/assets/css/extra.css` and `docs/pt/docs/assets/css/extra.css`.
+- Both configs point the theme `logo` at `assets/images/logo.webp`
+  and the `favicon` at `assets/images/icons/32.png`.
+- `extra_css`, theme logo, favicon, and homepage images must reference
+  files inside each language `docs_dir`, so the canonical assets in
+  `docs/assets/` are mirrored into `docs/en/assets/` and
+  `docs/pt/docs/assets/`.
+- When changing the shared CSS or images, refresh the published copies:
+
+  ```bash
+  rsync -a --delete --exclude '.DS_Store' docs/assets/images/ docs/en/assets/images/
+  rsync -a --delete --exclude '.DS_Store' docs/assets/images/ docs/pt/docs/assets/images/
+  cp docs/assets/css/extra.css docs/en/assets/css/extra.css
+  cp docs/assets/css/extra.css docs/pt/docs/assets/css/extra.css
+  ```
 
 The GitHub Actions workflow at
 `.github/workflows/docs.yml` builds both sites and uploads the
