@@ -47,6 +47,16 @@ impl HfRepo {
         &self.0
     }
 
+    /// Borrow the validated repo id (`"org/name"` or bare `"name"`).
+    ///
+    /// Canonical name used by the integration layer (resolver,
+    /// `Llama::load`, downloader cache keys). Functionally a synonym
+    /// for [`HfRepo::as_str`].
+    #[must_use]
+    pub fn repo_id(&self) -> &str {
+        &self.0
+    }
+
     fn validate(s: &str) -> Result<(), LlamaError> {
         if s.is_empty() {
             return Err(invalid("repo id is empty"));
@@ -196,5 +206,11 @@ mod tests {
         for bad in ["", "/x", "x/", "a//b", "a/b/c", "https://huggingface.co/x/y"] {
             assert!(!HfRepo::looks_like_repo_id(bad), "input: {bad}");
         }
+    }
+
+    #[test]
+    fn returns_inner_string_unchanged() {
+        let repo = HfRepo::new("TheBloke/Foo").expect("valid");
+        assert_eq!(repo.repo_id(), "TheBloke/Foo");
     }
 }

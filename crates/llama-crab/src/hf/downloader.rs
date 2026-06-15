@@ -257,3 +257,221 @@ mod tests {
         let _ = PathBuf::new();
     }
 }
+
+// =====================================================================
+// `RealHfDownloader` (gated behind the `hf-hub` feature)
+//
+// This impl is compiled only when the `hf-hub` feature is enabled,
+// so the rest of the crate does not pay the cost of pulling in the
+// `ureq` / `http` stack. It is the only place in `llama-crab` that
+// uses `hf-hub` types.
+//
+// Env-var handling: `RealHfDownloader::new()` reads `HF_TOKEN` and
+// `HF_ENDPOINT` exactly once, at construction time. Builder methods
+// (`with_*`) accept explicit values from the caller and must NOT
+// re-read the environment — this keeps env-reads observable in a
+// single grep and prevents accidental logging of the token via
+// builder-call chain dumps.
+//
+// Security note: never log `self.token`, `self.endpoint`, or any
+// fully-qualified URL. The Bearer header (`hf-hub` build_headers())
+// would otherwise be one accidental `{:?}` away from being
+// exfiltrated.
+// =====================================================================
+
+#[cfg(feature = "hf-hub")]
+#[derive(Debug, Clone, Default)]
+/// Production [`HfDownloader`] backed by the `hf-hub` crate.
+///
+/// Only available when the `hf-hub` cargo feature is enabled. Reads
+/// `HF_TOKEN` and `HF_ENDPOINT` from the environment at construction
+/// time (see [`RealHfDownloader::new`]); the `with_*` builders override
+/// those env-derived defaults on a per-instance basis.
+pub struct RealHfDownloader {
+    /// Override for the on-disk cache directory. `None` -> use `hf-hub`'s
+    /// default (`~/.cache/huggingface/hub` or `$HF_HOME/hub`).
+    cache_dir: Option<PathBuf>,
+    /// Hugging Face access token (for gated / private repos). `None` ->
+    /// anonymous public access.
+    token: Option<String>,
+    /// Override for the HF endpoint (e.g. a mirror URL). `None` ->
+    /// `https://huggingface.co`.
+    endpoint: Option<String>,
+    /// Pin the repo to a specific revision (branch, tag, or commit SHA).
+    /// `None` -> `"main"`.
+    revision: Option<String>,
+}
+
+#[cfg(feature = "hf-hub")]
+impl RealHfDownloader {
+    /// Construct a `RealHfDownloader` from the current process environment.
+    ///
+    /// Reads `HF_TOKEN` and `HF_ENDPOINT` via `std::env::var().ok()`. Missing
+    /// env vars are NOT an error — the downloader falls back to anonymous
+    /// public access (works for ungated models on `huggingface.co`).
+    ///
+    /// The signature returns `Result<Self, LlamaError>` to mirror the
+    /// `new() -> Result` + `.with_*` chain that callers expect. The
+    /// `Err` arm is reserved for genuine construction failures (none
+    /// in v1; env-var reads are infallible).
+    ///
+    /// # Errors
+    /// Currently never returns `Err`. Reserved for future construction
+    /// failures (e.g. invalid `HF_HOME`).
+    pub fn new() -> Result<Self, LlamaError> {
+        Ok(Self {
+            cache_dir: None,
+            token: std::env::var("HF_TOKEN").ok(),
+            endpoint: std::env::var("HF_ENDPOINT").ok(),
+            revision: None,
+        })
+    }
+
+    /// Override the cache directory. Defaults to `~/.cache/huggingface/hub`
+    /// (or `$HF_HOME/hub` if `HF_HOME` is set) — controlled by `hf-hub`.
+    #[must_use]
+    pub fn with_cache_dir(mut self, dir: PathBuf) -> Self {
+        self.cache_dir = Some(dir);
+        self
+    }
+
+    /// Override the Hugging Face endpoint (e.g. `https://hf-mirror.com`).
+    /// Equivalent to setting the `HF_ENDPOINT` env var at process level,
+    /// but scoped to this downloader instance.
+    #[must_use]
+    pub fn with_endpoint(mut self, ep: String) -> Self {
+        self.endpoint = Some(ep);
+        self
+    }
+
+    /// Pin the repo to a specific revision (branch, tag, or commit SHA).
+    /// Defaults to `"main"` if unset.
+    #[must_use]
+    pub fn with_revision(mut self, rev: String) -> Self {
+        self.revision = Some(rev);
+        self
+    }
+
+    /// Build an `hf_hub::Repo` from the configured `HfRepo` + revision.
+    /// `hf-hub` 0.5 only exposes `Api::model(repo_id: String)` (no
+    /// revision parameter), so we use `Api::repo(Repo::with_revision(...))`
+    /// to pass a non-default revision.
+    fn build_repo(&self, repo: &HfRepo) -> hf_hub::Repo {
+        let repo_id = repo.repo_id().to_string();
+        match &self.revision {
+            Some(rev) => hf_hub::Repo::with_revision(
+                repo_id,
+                hf_hub::RepoType::Model,
+                rev.clone(),
+            ),
+            None => hf_hub::Repo::new(repo_id, hf_hub::RepoType::Model),
+        }
+    }
+
+    /// Build a configured `hf_hub::api::sync::Api` from this struct's
+    /// fields. Reads `HF_HOME` / `HF_ENDPOINT` / token-file via
+    /// `ApiBuilder::from_env()`, then layers our overrides on top.
+    fn build_api(&self) -> Result<hf_hub::api::sync::Api, LlamaError> {
+        let mut builder = hf_hub::api::sync::ApiBuilder::from_env();
+        if let Some(dir) = &self.cache_dir {
+            builder = builder.with_cache_dir(dir.clone());
+        }
+        if let Some(tok) = &self.token {
+            builder = builder.with_token(Some(tok.clone()));
+        }
+        if let Some(ep) = &self.endpoint {
+            builder = builder.with_endpoint(ep.clone());
+        }
+        builder
+            .build()
+            .map_err(|e| LlamaError::ModelDownload(format!("api build: {e}")))
+    }
+}
+
+#[cfg(feature = "hf-hub")]
+impl HfDownloader for RealHfDownloader {
+    fn get(&self, repo: &HfRepo, filename: &str) -> Result<PathBuf, LlamaError> {
+        let api = self.build_api()?;
+        let api_repo = api.repo(self.build_repo(repo));
+        api_repo
+            .get(filename)
+            .map_err(|e| LlamaError::ModelDownload(format!("download: {e}")))
+    }
+
+    fn list_repo_files(&self, repo: &HfRepo) -> Result<Vec<String>, LlamaError> {
+        let api = self.build_api()?;
+        let api_repo = api.repo(self.build_repo(repo));
+        let info = api_repo
+            .info()
+            .map_err(|e| LlamaError::ModelDownload(format!("repo info: {e}")))?;
+        Ok(info
+            .siblings
+            .iter()
+            .map(|s| s.rfilename.clone())
+            .filter(|n| n.ends_with(".gguf"))
+            .collect())
+    }
+}
+
+#[cfg(all(test, feature = "hf-hub"))]
+mod real_tests {
+    use super::*;
+
+    /// Smoke test: construction must succeed with no env vars set. This
+    /// is not a network test — it only verifies the env-var reads in
+    /// `new()` are infallible and the struct can be built.
+    ///
+    /// The implementation reads `HF_TOKEN` / `HF_ENDPOINT` via `.ok()`,
+    /// so this test cannot and does NOT set/unset env vars (env-var
+    /// manipulation in tests is racy under multi-threaded test
+    /// runners). It would only fail if `std::env::var` itself panicked
+    /// or if the struct construction was otherwise impossible.
+    #[test]
+    fn real_downloader_constructs_with_no_env() {
+        let result = RealHfDownloader::new();
+        assert!(
+            result.is_ok(),
+            "RealHfDownloader::new must succeed (env reads are .ok())"
+        );
+    }
+
+    /// Network integration test: fetch a real `.gguf` from HF Hub.
+    ///
+    /// Gated by three layers:
+    /// 1. `#[cfg(feature = "hf-hub")]` — won't compile when the feature
+    ///    is off (real impl doesn't exist).
+    /// 2. `#[ignore]` — won't run with plain `cargo test`; must use
+    ///    `cargo test -- --ignored`.
+    /// 3. `LLAMA_CRAB_RUN_HF_INTEGRATION=1` env var — checked at test
+    ///    runtime. If unset, the test panics with a clear message so
+    ///    accidental `--ignored` runs in CI are visible.
+    ///
+    /// Run with:
+    /// ```text
+    /// LLAMA_CRAB_RUN_HF_INTEGRATION=1 \
+    ///   cargo test -p llama-crab --features hf-hub \
+    ///   --lib hf::downloader::real_tests::real_downloader_fetches_tinyllama -- --ignored
+    /// ```
+    #[test]
+    #[ignore]
+    fn real_downloader_fetches_tinyllama() {
+        if std::env::var("LLAMA_CRAB_RUN_HF_INTEGRATION").ok().as_deref() != Some("1") {
+            panic!(
+                "LLAMA_CRAB_RUN_HF_INTEGRATION must be set to 1 to run this network test"
+            );
+        }
+        let dl = RealHfDownloader::new().expect("downloader init");
+        let repo = HfRepo::new("TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF")
+            .expect("valid repo id");
+        let path = dl
+            .get(&repo, "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf")
+            .expect("download must succeed");
+        assert!(
+            path.exists(),
+            "downloaded file must exist on disk: {}",
+            path.display()
+        );
+        let meta = std::fs::metadata(&path).expect("stat downloaded file");
+        assert!(meta.len() > 0, "downloaded file must be > 0 bytes");
+    }
+}

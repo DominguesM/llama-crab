@@ -184,6 +184,16 @@ pub struct LlamaParams {
     pub model: LlamaModelParams,
     /// Context-side params (n_ctx, embeddings, etc.).
     pub context: LlamaContextParams,
+    /// Filename within a Hugging Face repo (set via `with_hf_filename`).
+    hf_filename: Option<String>,
+    /// Revision (branch, tag, or commit) of a Hugging Face repo.
+    hf_revision: Option<String>,
+    /// Hugging Face access token for gated/private repos.
+    hf_token: Option<String>,
+    /// Override for the Hugging Face cache directory.
+    hf_cache_dir: Option<PathBuf>,
+    /// Override for the Hugging Face endpoint (e.g. a mirror).
+    hf_endpoint: Option<String>,
 }
 
 /// High-level mobile-oriented parameter presets.
@@ -220,6 +230,11 @@ impl LlamaParams {
             model_path: model_path.as_ref().to_path_buf(),
             model: LlamaModelParams::default(),
             context: LlamaContextParams::default(),
+            hf_filename: None,
+            hf_revision: None,
+            hf_token: None,
+            hf_cache_dir: None,
+            hf_endpoint: None,
         }
     }
 
@@ -307,6 +322,37 @@ impl LlamaParams {
         self
     }
 
+    /// Set the filename within a Hugging Face repo. Required when the repo has multiple .gguf files.
+    #[must_use]
+    pub fn with_hf_filename(mut self, filename: impl Into<String>) -> Self {
+        self.hf_filename = Some(filename.into());
+        self
+    }
+    /// Set the revision (branch, tag, or commit) of the Hugging Face repo. Defaults to "main".
+    #[must_use]
+    pub fn with_hf_revision(mut self, revision: impl Into<String>) -> Self {
+        self.hf_revision = Some(revision.into());
+        self
+    }
+    /// Set the Hugging Face access token (for gated/private repos). Equivalent to setting HF_TOKEN.
+    #[must_use]
+    pub fn with_hf_token(mut self, token: impl Into<String>) -> Self {
+        self.hf_token = Some(token.into());
+        self
+    }
+    /// Override the cache directory. Defaults to `~/.cache/huggingface/hub` (or $HF_HOME/hub).
+    #[must_use]
+    pub fn with_hf_cache_dir(mut self, dir: impl Into<PathBuf>) -> Self {
+        self.hf_cache_dir = Some(dir.into());
+        self
+    }
+    /// Set the Hugging Face endpoint (for mirrors like hf-mirror.com). Equivalent to setting HF_ENDPOINT.
+    #[must_use]
+    pub fn with_hf_endpoint(mut self, ep: impl Into<String>) -> Self {
+        self.hf_endpoint = Some(ep.into());
+        self
+    }
+
     /// Apply a mobile-oriented preset. Call explicit setters after this method
     /// to override individual values.
     #[must_use]
@@ -348,6 +394,11 @@ impl Default for LlamaParams {
             model_path: PathBuf::new(),
             model: LlamaModelParams::default(),
             context: LlamaContextParams::default(),
+            hf_filename: None,
+            hf_revision: None,
+            hf_token: None,
+            hf_cache_dir: None,
+            hf_endpoint: None,
         }
     }
 }
@@ -377,5 +428,35 @@ mod tests {
         assert_eq!("balanced".parse(), Ok(MobilePreset::Balanced));
         assert_eq!("gpu-max".parse(), Ok(MobilePreset::GpuMax));
         assert!("fast".parse::<MobilePreset>().is_err());
+    }
+
+    #[test]
+    fn with_hf_filename_sets_field() {
+        let p = LlamaParams::new("foo.gguf").with_hf_filename("model.Q4_K_M.gguf");
+        assert_eq!(p.hf_filename.as_deref(), Some("model.Q4_K_M.gguf"));
+    }
+
+    #[test]
+    fn with_hf_revision_sets_field() {
+        let p = LlamaParams::new("foo.gguf").with_hf_revision("refs/pr/42");
+        assert_eq!(p.hf_revision.as_deref(), Some("refs/pr/42"));
+    }
+
+    #[test]
+    fn with_hf_token_sets_field() {
+        let p = LlamaParams::new("foo.gguf").with_hf_token("hf_secret");
+        assert_eq!(p.hf_token.as_deref(), Some("hf_secret"));
+    }
+
+    #[test]
+    fn with_hf_cache_dir_sets_field() {
+        let p = LlamaParams::new("foo.gguf").with_hf_cache_dir(std::path::PathBuf::from("/tmp/cache"));
+        assert_eq!(p.hf_cache_dir.as_deref(), Some(std::path::Path::new("/tmp/cache")));
+    }
+
+    #[test]
+    fn with_hf_endpoint_sets_field() {
+        let p = LlamaParams::new("foo.gguf").with_hf_endpoint("https://hf-mirror.com");
+        assert_eq!(p.hf_endpoint.as_deref(), Some("https://hf-mirror.com"));
     }
 }

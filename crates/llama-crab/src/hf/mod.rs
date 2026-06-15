@@ -7,6 +7,7 @@
 
 pub mod downloader;
 pub mod repo;
+pub mod source;
 
 pub use self::downloader::{HfDownloader, MockHfDownloader};
 pub use self::repo::HfRepo;
