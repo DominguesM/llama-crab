@@ -35,6 +35,24 @@ cargo run -p llama-crab-server -- \
 Multimodal chat is available when the binary is built with `--features mtmd`
 and started with `--mmproj <projector.gguf>`.
 
+## Hugging Face support
+
+To enable loading models directly from Hugging Face (e.g. `--model TheBloke/...`),
+install the server with the `hf-hub` feature:
+
+```bash
+cargo install llama-crab-server --features hf-hub --force
+```
+
+When the feature is enabled, the server accepts Hugging Face repository ids
+via `--model` and disambiguates multi-`.gguf` repos via `--hf-filename`:
+
+```bash
+llama-crab-server \
+  --model TheBloke/Llama-2-7B-Chat-GGUF \
+  --hf-filename llama-2-7b-chat.Q4_K_M.gguf
+```
+
 For the full request schema, sampling fields and structured-output options,
 see the [server guide](https://llama-crab.nlp.rocks/server/).
 

@@ -33,6 +33,11 @@ name = "lfm_vl_vision"
 path = "tests/lfm_vl_vision.rs"
 required-features = ["mtmd"]
 
+[[test]]
+name = "hf_download"
+path = "tests/hf_download.rs"
+required-features = ["hf-hub"]
+
 [lints]
 workspace = true
 
