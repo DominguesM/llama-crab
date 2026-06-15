@@ -253,7 +253,10 @@ impl std::fmt::Debug for LlamaParams {
             .field("hf_cache_dir", &self.hf_cache_dir)
             .field("hf_endpoint", &self.hf_endpoint)
             .field("hf_repo_override", &self.hf_repo_override)
-            .field("hf_downloader", &self.hf_downloader.as_ref().map(|_| "<HfDownloader>"))
+            .field(
+                "hf_downloader",
+                &self.hf_downloader.as_ref().map(|_| "<HfDownloader>"),
+            )
             .finish()
     }
 }
@@ -537,8 +540,12 @@ mod tests {
 
     #[test]
     fn with_hf_cache_dir_sets_field() {
-        let p = LlamaParams::new("foo.gguf").with_hf_cache_dir(std::path::PathBuf::from("/tmp/cache"));
-        assert_eq!(p.hf_cache_dir.as_deref(), Some(std::path::Path::new("/tmp/cache")));
+        let p =
+            LlamaParams::new("foo.gguf").with_hf_cache_dir(std::path::PathBuf::from("/tmp/cache"));
+        assert_eq!(
+            p.hf_cache_dir.as_deref(),
+            Some(std::path::Path::new("/tmp/cache"))
+        );
     }
 
     #[test]
@@ -566,8 +573,7 @@ mod tests {
     fn load_with_existing_local_path_does_not_invoke_downloader() {
         // Pre-create a real file on disk; resolver must take Local branch.
         let tmp = tempfile::NamedTempFile::new().expect("create temp file");
-        std::fs::write(tmp.path(), b"GGUF\x00\x00\x00\x03not-a-real-gguf")
-            .expect("write blob");
+        std::fs::write(tmp.path(), b"GGUF\x00\x00\x00\x03not-a-real-gguf").expect("write blob");
         let local_path = tmp.path().to_path_buf();
 
         // Arm the downloader with a recognizable error. If the resolver

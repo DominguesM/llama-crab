@@ -90,9 +90,7 @@ pub fn resolve_hf_integration(
     if std::env::var("LLAMA_CRAB_RUN_HF_INTEGRATION").is_ok() {
         Some((repo, filename))
     } else {
-        eprintln!(
-            "skipping HF integration test: set LLAMA_CRAB_RUN_HF_INTEGRATION=1 to enable"
-        );
+        eprintln!("skipping HF integration test: set LLAMA_CRAB_RUN_HF_INTEGRATION=1 to enable");
         None
     }
 }

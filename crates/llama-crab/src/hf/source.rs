@@ -1,4 +1,4 @@
-//! [`ModelSource`] discriminator and the [`resolve`] precedence function.
+//! `ModelSource` discriminator and the `resolve` precedence function.
 //!
 //! Three input sources collapse to one of two load strategies:
 //!
@@ -11,8 +11,8 @@
 //! to `.gguf`, and either picks the sole candidate or errors out.
 //!
 //! This module is pure resolver logic — no FFI, no `LlamaBackend`, no
-//! `LlamaParams` coupling. The integration in `Llama::load` (Task 10) is
-//! the one that extracts the public input fields and calls [`resolve`].
+//! `LlamaParams` coupling. The integration in `Llama::load` is the one that
+//! extracts the public input fields and calls `resolve`.
 
 use std::path::{Path, PathBuf};
 
@@ -69,14 +69,12 @@ pub(crate) fn resolve(
     // Precedence 2: auto-detect when the path string looks like a HF
     // repo id AND the file is not on disk. Non-UTF-8 paths fall through
     // to Local (a non-UTF-8 string cannot be a valid HF repo id).
-    let is_hf_candidate = model_path
-        .to_str()
-        .is_some_and(HfRepo::looks_like_repo_id);
+    let is_hf_candidate = model_path.to_str().is_some_and(HfRepo::looks_like_repo_id);
     if is_hf_candidate && !model_path.exists() {
         // Safe to unwrap: `is_some_and` proved the path is UTF-8 above.
         let path_str = model_path.to_str().expect("UTF-8 checked above");
-        let repo = HfRepo::new(path_str)
-            .expect("looks_like_repo_id returned true but new() failed");
+        let repo =
+            HfRepo::new(path_str).expect("looks_like_repo_id returned true but new() failed");
         return resolve_hf(&repo, hf_filename, downloader);
     }
 
@@ -98,10 +96,7 @@ fn resolve_hf(
 }
 
 /// Auto-pick a single `.gguf` from the repo's file list.
-fn auto_pick(
-    repo: &HfRepo,
-    downloader: &dyn HfDownloader,
-) -> Result<String, LlamaError> {
+fn auto_pick(repo: &HfRepo, downloader: &dyn HfDownloader) -> Result<String, LlamaError> {
     let files = downloader.list_repo_files(repo)?;
     let gguf: Vec<String> = files.into_iter().filter(|f| f.ends_with(".gguf")).collect();
     match gguf.len() {
@@ -162,10 +157,7 @@ mod tests {
 
         let result = resolve(&path, None, None, &dl).expect("local resolves");
 
-        assert_eq!(
-            result, path,
-            "existing file wins over looks_like_repo_id"
-        );
+        assert_eq!(result, path, "existing file wins over looks_like_repo_id");
     }
 
     // ----- Hf branch: explicit override -----
@@ -243,8 +235,7 @@ mod tests {
         let dl = MockHfDownloader::default();
         let model_path = PathBuf::from("TheBloke/Empty");
 
-        let err = resolve(&model_path, None, None, &dl)
-            .expect_err("0 gguf files must error");
+        let err = resolve(&model_path, None, None, &dl).expect_err("0 gguf files must error");
 
         match err {
             LlamaError::ModelDownload(msg) => {
@@ -272,12 +263,14 @@ mod tests {
         );
         let model_path = PathBuf::from("TheBloke/Ambiguous");
 
-        let err = resolve(&model_path, None, None, &dl)
-            .expect_err(">1 gguf files must error");
+        let err = resolve(&model_path, None, None, &dl).expect_err(">1 gguf files must error");
 
         match err {
             LlamaError::ModelDownload(msg) => {
-                assert!(msg.contains("ambiguous"), "msg must say 'ambiguous', got: {msg}");
+                assert!(
+                    msg.contains("ambiguous"),
+                    "msg must say 'ambiguous', got: {msg}"
+                );
                 assert!(
                     msg.contains("2 gguf files in repo"),
                     "msg must include the count '2 gguf files in repo', got: {msg}"

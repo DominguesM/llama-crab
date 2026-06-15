@@ -47,8 +47,6 @@ fn hf_download_and_cache_hit() {
     // Smoke: actually try to load the model through Llama::load. The path
     // is on disk so the resolver takes the Local branch.
     let path_buf = PathBuf::from(&p1);
-    let _ = Llama::load(
-        LlamaParams::new(path_buf).with_n_ctx(512),
-    )
-    .expect("Llama::load should succeed with cached .gguf path");
+    let _ = Llama::load(LlamaParams::new(path_buf).with_n_ctx(512))
+        .expect("Llama::load should succeed with cached .gguf path");
 }

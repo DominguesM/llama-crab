@@ -201,9 +201,8 @@ mod tests {
     /// clears the slot (so the call after that succeeds).
     #[test]
     fn mock_returns_injected_error() {
-        let mock = MockHfDownloader::default().with_next_error(LlamaError::ModelDownload(
-            "injected 404".into(),
-        ));
+        let mock = MockHfDownloader::default()
+            .with_next_error(LlamaError::ModelDownload("injected 404".into()));
         let repo = HfRepo::new("TheBloke/Foo").expect("valid repo id");
 
         let err = mock
@@ -284,8 +283,7 @@ mod tests {
         }
         // Thread-safe buffer that backs a custom `MakeWriter` so the
         // subscriber's output ends up in a `String` we can assert on.
-        let buf: Arc<std::sync::Mutex<Vec<u8>>> =
-            Arc::new(std::sync::Mutex::new(Vec::new()));
+        let buf: Arc<std::sync::Mutex<Vec<u8>>> = Arc::new(std::sync::Mutex::new(Vec::new()));
         let writer = TracingBufWriter(buf.clone());
         let subscriber = tracing_subscriber::fmt()
             .with_writer(writer)
@@ -296,8 +294,8 @@ mod tests {
 
         tracing::subscriber::with_default(subscriber, || {
             let dl = RealHfDownloader::new().expect("downloader init");
-            let repo = HfRepo::new("TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF")
-                .expect("valid repo id");
+            let repo =
+                HfRepo::new("TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF").expect("valid repo id");
             dl.get(&repo, "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf")
                 .expect("download must succeed");
         });
@@ -511,11 +509,7 @@ impl RealHfDownloader {
     fn build_repo(&self, repo: &HfRepo) -> hf_hub::Repo {
         let repo_id = repo.repo_id().to_string();
         match &self.revision {
-            Some(rev) => hf_hub::Repo::with_revision(
-                repo_id,
-                hf_hub::RepoType::Model,
-                rev.clone(),
-            ),
+            Some(rev) => hf_hub::Repo::with_revision(repo_id, hf_hub::RepoType::Model, rev.clone()),
             None => hf_hub::Repo::new(repo_id, hf_hub::RepoType::Model),
         }
     }
@@ -547,7 +541,11 @@ impl HfDownloader for RealHfDownloader {
         // only fields emitted here are the public `repo_id`, the public
         // `filename`, the on-disk size, and the elapsed wall time.
         let started = std::time::Instant::now();
-        tracing::info!(repo = repo.repo_id(), filename, "downloading from Hugging Face");
+        tracing::info!(
+            repo = repo.repo_id(),
+            filename,
+            "downloading from Hugging Face"
+        );
         let result: Result<PathBuf, LlamaError> = (|| {
             let api = self.build_api()?;
             let api_repo = api.repo(self.build_repo(repo));
@@ -635,14 +633,15 @@ mod real_tests {
     #[test]
     #[ignore]
     fn real_downloader_fetches_tinyllama() {
-        if std::env::var("LLAMA_CRAB_RUN_HF_INTEGRATION").ok().as_deref() != Some("1") {
-            panic!(
-                "LLAMA_CRAB_RUN_HF_INTEGRATION must be set to 1 to run this network test"
-            );
+        if std::env::var("LLAMA_CRAB_RUN_HF_INTEGRATION")
+            .ok()
+            .as_deref()
+            != Some("1")
+        {
+            panic!("LLAMA_CRAB_RUN_HF_INTEGRATION must be set to 1 to run this network test");
         }
         let dl = RealHfDownloader::new().expect("downloader init");
-        let repo = HfRepo::new("TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF")
-            .expect("valid repo id");
+        let repo = HfRepo::new("TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF").expect("valid repo id");
         let path = dl
             .get(&repo, "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf")
             .expect("download must succeed");

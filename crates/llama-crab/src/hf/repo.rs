@@ -78,7 +78,9 @@ impl HfRepo {
             return Err(invalid("repo id segment contains invalid characters"));
         }
         if is_forbidden_first_segment(first) {
-            return Err(invalid("repo id first segment is a reserved local-path word"));
+            return Err(invalid(
+                "repo id first segment is a reserved local-path word",
+            ));
         }
 
         match iter.next() {
@@ -104,9 +106,8 @@ fn invalid(msg: &str) -> LlamaError {
 }
 
 fn is_valid_segment(seg: &str) -> bool {
-    seg.bytes().all(|b| {
-        b.is_ascii_alphanumeric() || b == b'.' || b == b'_' || b == b'-'
-    })
+    seg.bytes()
+        .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'_' || b == b'-')
 }
 
 fn is_forbidden_first_segment(seg: &str) -> bool {
@@ -200,10 +201,25 @@ mod tests {
 
     #[test]
     fn looks_like_repo_id_matches_new() {
-        for ok in ["gpt2", "TheBloke/Llama-2-7B-Chat-GGUF", "user.name/repo_1-2"] {
-            assert_eq!(HfRepo::looks_like_repo_id(ok), HfRepo::new(ok).is_ok(), "input: {ok}");
+        for ok in [
+            "gpt2",
+            "TheBloke/Llama-2-7B-Chat-GGUF",
+            "user.name/repo_1-2",
+        ] {
+            assert_eq!(
+                HfRepo::looks_like_repo_id(ok),
+                HfRepo::new(ok).is_ok(),
+                "input: {ok}"
+            );
         }
-        for bad in ["", "/x", "x/", "a//b", "a/b/c", "https://huggingface.co/x/y"] {
+        for bad in [
+            "",
+            "/x",
+            "x/",
+            "a//b",
+            "a/b/c",
+            "https://huggingface.co/x/y",
+        ] {
             assert!(!HfRepo::looks_like_repo_id(bad), "input: {bad}");
         }
     }
