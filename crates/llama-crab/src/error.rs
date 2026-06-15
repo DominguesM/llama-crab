@@ -36,6 +36,10 @@ pub enum LlamaError {
     #[error("failed to load model: {0}")]
     ModelLoad(String),
 
+    /// Failed to download a model from Hugging Face.
+    #[error("huggingface download: {0}")]
+    ModelDownload(String),
+
     /// Failed to create a context.
     #[error("failed to create context: {0}")]
     ContextLoad(String),
@@ -84,5 +88,18 @@ impl LlamaError {
 impl From<std::num::TryFromIntError> for LlamaError {
     fn from(e: std::num::TryFromIntError) -> Self {
         Self::Batch(e.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::LlamaError;
+
+    #[test]
+    fn model_download_display() {
+        assert_eq!(
+            format!("{}", crate::LlamaError::ModelDownload("404".into())),
+            "huggingface download: 404"
+        );
     }
 }

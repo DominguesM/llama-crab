@@ -35,6 +35,7 @@ pub mod cache;
 pub mod chat;
 pub mod context;
 pub mod error;
+pub mod hf;
 pub mod high_level;
 pub mod json_schema;
 pub mod log;
@@ -55,6 +56,7 @@ pub use crate::batch::{BatchAddError, LlamaBatch};
 pub use crate::chat::Role;
 pub use crate::context::{LlamaContext, LlamaContextParams};
 pub use crate::error::{LlamaError, Result};
+pub use crate::hf::{HfDownloader, HfRepo, MockHfDownloader};
 pub use crate::high_level::chat_completion::ChatMessage;
 pub use crate::high_level::completion::{
     Completion, CompletionChunk, CompletionLogprobs, CompletionOptions, StopReason, StreamControl,
