@@ -12,6 +12,7 @@
 
 use crate::error::LlamaError;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use super::repo::HfRepo;
 
@@ -256,6 +257,157 @@ mod tests {
         // references it on a given toolchain.
         let _ = PathBuf::new();
     }
+
+    /// Network integration test: assert that `RealHfDownloader::get` emits
+    /// the expected start + success `tracing::info!` events, and that the
+    /// captured output does NOT contain the token, endpoint, or a
+    /// fully-qualified URL. Gated by three layers:
+    ///
+    /// 1. `#[cfg(feature = "hf-hub")]` — the downloader is conditionally
+    ///    compiled so the test only exists when the impl exists.
+    /// 2. `#[ignore]` — won't run with plain `cargo test`; opt in with
+    ///    `cargo test -p llama-crab --features hf-hub -- --ignored`.
+    /// 3. `LLAMA_CRAB_RUN_HF_INTEGRATION=1` env var — without it the test
+    ///    silently `return`s so accidental `--ignored` runs without the
+    ///    env var don't hit the network.
+    ///
+    /// The subscriber is scoped to the test body via
+    /// `tracing::subscriber::with_default` so it does NOT install a
+    /// process-global subscriber and cannot interfere with other tests.
+    #[cfg(feature = "hf-hub")]
+    #[test]
+    #[ignore]
+    fn real_downloader_logs_start_and_end() {
+        if std::env::var("LLAMA_CRAB_RUN_HF_INTEGRATION").is_err() {
+            eprintln!("skipping: set LLAMA_CRAB_RUN_HF_INTEGRATION=1 to enable");
+            return;
+        }
+        // Thread-safe buffer that backs a custom `MakeWriter` so the
+        // subscriber's output ends up in a `String` we can assert on.
+        let buf: Arc<std::sync::Mutex<Vec<u8>>> =
+            Arc::new(std::sync::Mutex::new(Vec::new()));
+        let writer = TracingBufWriter(buf.clone());
+        let subscriber = tracing_subscriber::fmt()
+            .with_writer(writer)
+            .with_max_level(tracing::Level::INFO)
+            .with_target(false)
+            .with_ansi(false)
+            .finish();
+
+        tracing::subscriber::with_default(subscriber, || {
+            let dl = RealHfDownloader::new().expect("downloader init");
+            let repo = HfRepo::new("TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF")
+                .expect("valid repo id");
+            dl.get(&repo, "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf")
+                .expect("download must succeed");
+        });
+
+        let captured = {
+            let guard = buf.lock().expect("buf lock");
+            String::from_utf8(guard.clone()).expect("captured bytes are utf-8")
+        };
+
+        // The two new `tracing::info!` sites (Task 11) must both appear.
+        assert!(
+            captured.contains("downloading from Hugging Face"),
+            "start log missing in captured output: {captured}"
+        );
+        assert!(
+            captured.contains("downloaded from Hugging Face"),
+            "end log missing in captured output: {captured}"
+        );
+        // Field names per the plan: `repo=`, `filename=`, and (on the
+        // success branch) `size_bytes=`, `elapsed_ms=`.
+        assert!(
+            captured.contains("repo=") && captured.contains("filename="),
+            "expected fields 'repo=' and 'filename=' in start log: {captured}"
+        );
+        assert!(
+            captured.contains("size_bytes=") && captured.contains("elapsed_ms="),
+            "expected fields 'size_bytes=' and 'elapsed_ms=' in end log: {captured}"
+        );
+        // SEC-1: must NOT log token / endpoint / URL.
+        assert!(
+            !captured.contains("HF_TOKEN") && !captured.contains("token="),
+            "token leaked into logs: {captured}"
+        );
+        assert!(
+            !captured.contains("HF_ENDPOINT") && !captured.contains("endpoint="),
+            "endpoint leaked into logs: {captured}"
+        );
+        assert!(
+            !captured.contains("https://"),
+            "URL leaked into logs: {captured}"
+        );
+    }
+
+    /// `MakeWriter` impl that funnels every emitted line into a shared
+    /// `Arc<Mutex<Vec<u8>>>`. Used by `real_downloader_logs_start_and_end`
+    /// to capture `tracing` output without installing a global subscriber.
+    #[cfg(feature = "hf-hub")]
+    struct TracingBufWriter(Arc<std::sync::Mutex<Vec<u8>>>);
+
+    #[cfg(feature = "hf-hub")]
+    impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for TracingBufWriter {
+        type Writer = TracingBufGuard<'a>;
+        fn make_writer(&'a self) -> Self::Writer {
+            TracingBufGuard(self.0.lock().expect("buf lock"))
+        }
+    }
+
+    #[cfg(feature = "hf-hub")]
+    struct TracingBufGuard<'a>(std::sync::MutexGuard<'a, Vec<u8>>);
+
+    #[cfg(feature = "hf-hub")]
+    impl std::io::Write for TracingBufGuard<'_> {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.0.write(buf)
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+}
+
+// =====================================================================
+// `DisabledHfDownloader` (always compiled)
+//
+// Used as the production default when the `hf-hub` cargo feature is off.
+// Every dispatch returns a clear runtime error that points the user at
+// the build flag they need to enable. Always-compiled so `Llama::load`
+// can resolve its default downloader regardless of feature state.
+// =====================================================================
+
+/// Fallback downloader used when the `hf-hub` feature is disabled.
+/// Any HF dispatch returns a clear runtime error pointing the user at
+/// the build flag they need to enable.
+#[derive(Debug)]
+struct DisabledHfDownloader;
+
+impl HfDownloader for DisabledHfDownloader {
+    fn get(&self, _repo: &HfRepo, _filename: &str) -> Result<PathBuf, LlamaError> {
+        Err(LlamaError::ModelDownload(
+            "hf-hub feature is disabled \u{2014} rebuild with --features hf-hub".into(),
+        ))
+    }
+}
+
+/// Construct the production-default [`HfDownloader`] for `Llama::load`.
+///
+/// When the `hf-hub` feature is enabled this returns a [`RealHfDownloader`]
+/// configured from the current process environment (`HF_TOKEN`,
+/// `HF_ENDPOINT`). Otherwise it returns a [`DisabledHfDownloader`] that
+/// surfaces a clear "feature disabled" error at every dispatch site, so
+/// `Llama::load` always compiles regardless of feature state.
+pub(crate) fn default_downloader() -> Result<Arc<dyn HfDownloader>, LlamaError> {
+    #[cfg(feature = "hf-hub")]
+    {
+        Ok(Arc::new(RealHfDownloader::new()?))
+    }
+    #[cfg(not(feature = "hf-hub"))]
+    {
+        Ok(Arc::new(DisabledHfDownloader))
+    }
 }
 
 // =====================================================================
@@ -391,11 +543,39 @@ impl RealHfDownloader {
 #[cfg(feature = "hf-hub")]
 impl HfDownloader for RealHfDownloader {
     fn get(&self, repo: &HfRepo, filename: &str) -> Result<PathBuf, LlamaError> {
-        let api = self.build_api()?;
-        let api_repo = api.repo(self.build_repo(repo));
-        api_repo
-            .get(filename)
-            .map_err(|e| LlamaError::ModelDownload(format!("download: {e}")))
+        // SEC-1: never log `self.token` / `self.endpoint` / any URL. The
+        // only fields emitted here are the public `repo_id`, the public
+        // `filename`, the on-disk size, and the elapsed wall time.
+        let started = std::time::Instant::now();
+        tracing::info!(repo = repo.repo_id(), filename, "downloading from Hugging Face");
+        let result: Result<PathBuf, LlamaError> = (|| {
+            let api = self.build_api()?;
+            let api_repo = api.repo(self.build_repo(repo));
+            api_repo
+                .get(filename)
+                .map_err(|e| LlamaError::ModelDownload(format!("download: {e}")))
+        })();
+        match &result {
+            Ok(path) => {
+                let size_bytes = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+                tracing::info!(
+                    repo = repo.repo_id(),
+                    filename,
+                    size_bytes,
+                    elapsed_ms = started.elapsed().as_millis() as u64,
+                    "downloaded from Hugging Face"
+                );
+            }
+            Err(_) => {
+                tracing::warn!(
+                    repo = repo.repo_id(),
+                    filename,
+                    elapsed_ms = started.elapsed().as_millis() as u64,
+                    "Hugging Face download failed"
+                );
+            }
+        }
+        result
     }
 
     fn list_repo_files(&self, repo: &HfRepo) -> Result<Vec<String>, LlamaError> {
