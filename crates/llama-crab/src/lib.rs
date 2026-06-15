@@ -10,6 +10,32 @@
 //! println!("{}", resp.text);
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
+//!
+//! ## Loading from Hugging Face
+//!
+//! Pass a Hugging Face repository id (e.g. `TheBloke/Llama-2-7B-Chat-GGUF`)
+//! directly to `LlamaParams::new`; the library will download the GGUF to
+//! the official HF cache and load it. For repos with multiple `.gguf`
+//! files, specify the filename via `with_hf_filename`:
+//!
+//! ```no_run
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! #[cfg(feature = "hf-hub")]
+//! {
+//! use llama_crab::{Llama, LlamaParams};
+//!
+//! let mut llama = Llama::load(
+//!     LlamaParams::new("TheBloke/Llama-2-7B-Chat-GGUF")
+//!         .with_hf_filename("llama-2-7b-chat.Q4_K_M.gguf")
+//!         .with_n_ctx(2048),
+//! )?;
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! The model is cached at `~/.cache/huggingface/hub` (or `$HF_HOME/hub` if
+//! set). Set `HF_TOKEN` for gated repos. Requires the `hf-hub` cargo feature.
 
 #![doc(
     html_logo_url = "https://gist.githubusercontent.com/DominguesM/127b9e5614e0e2da6b896fb3da3c8f2d/raw/a42e6daa629eb6f0254de026c47da9aff3c1f0e2/canarim-crab.webp"
@@ -35,6 +61,7 @@ pub mod cache;
 pub mod chat;
 pub mod context;
 pub mod error;
+pub mod hf;
 pub mod high_level;
 pub mod json_schema;
 pub mod log;
@@ -55,6 +82,7 @@ pub use crate::batch::{BatchAddError, LlamaBatch};
 pub use crate::chat::Role;
 pub use crate::context::{LlamaContext, LlamaContextParams};
 pub use crate::error::{LlamaError, Result};
+pub use crate::hf::{HfDownloader, HfRepo, MockHfDownloader};
 pub use crate::high_level::chat_completion::ChatMessage;
 pub use crate::high_level::completion::{
     Completion, CompletionChunk, CompletionLogprobs, CompletionOptions, StopReason, StreamControl,

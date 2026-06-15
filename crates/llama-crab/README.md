@@ -30,6 +30,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+### Loading a model from Hugging Face
+
+Pass a Hugging Face repository id (e.g. `TheBloke/Llama-2-7B-Chat-GGUF`) directly to
+`LlamaParams::new`; the library will download the GGUF to the official HF cache and load it.
+For repos with multiple `.gguf` files, specify the filename via `with_hf_filename`:
+
+```rust,no_run
+use llama_crab::{Llama, LlamaParams};
+
+let mut llama = Llama::load(
+    LlamaParams::new("TheBloke/Llama-2-7B-Chat-GGUF")
+        .with_hf_filename("llama-2-7b-chat.Q4_K_M.gguf")
+        .with_n_ctx(2048),
+)?;
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+The model is cached at `~/.cache/huggingface/hub` (or `$HF_HOME/hub` if set). Set
+`HF_TOKEN` for gated repos. Requires the `hf-hub` cargo feature:
+
+```toml
+[dependencies]
+llama-crab = { version = "0.1", features = ["hf-hub"] }
+```
+
 ## Features
 
 - Text completion, chat completion, infill, embeddings and reranking.

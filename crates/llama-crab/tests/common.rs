@@ -80,3 +80,30 @@ pub fn banner(test: &str, model: &Path) {
     eprintln!("  model : {}", model.display());
     eprintln!("================================================================");
 }
+
+/// Skip the current test if `LLAMA_CRAB_RUN_HF_INTEGRATION` is not set.
+/// Returns `Some((repo, filename))` on success, `None` on skip.
+pub fn resolve_hf_integration(
+    repo: &'static str,
+    filename: &'static str,
+) -> Option<(&'static str, &'static str)> {
+    if std::env::var("LLAMA_CRAB_RUN_HF_INTEGRATION").is_ok() {
+        Some((repo, filename))
+    } else {
+        eprintln!("skipping HF integration test: set LLAMA_CRAB_RUN_HF_INTEGRATION=1 to enable");
+        None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    #[ignore = "requires manual env manipulation; run with --ignored"]
+    fn resolve_hf_integration_returns_none_when_env_unset() {
+        // SAFETY: this test is `#[ignore]` so it does not run in parallel with other env-using tests.
+        unsafe {
+            std::env::remove_var("LLAMA_CRAB_RUN_HF_INTEGRATION");
+        }
+        assert!(super::resolve_hf_integration("foo/bar", "x.gguf").is_none());
+    }
+}

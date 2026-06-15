@@ -19,9 +19,10 @@ workspace = true
 [features]
 default = []
 mtmd = ["llama-crab/mtmd"]
+hf-hub = ["llama-crab/hf-hub"]
 
 [dependencies]
-llama-crab = { workspace = true, features = ["common"] }
+llama-crab = { workspace = true, features = ["common", "hf-hub"] }
 axum = "0.7"
 base64 = "0.22"
 clap = { version = "4", features = ["derive", "env"] }

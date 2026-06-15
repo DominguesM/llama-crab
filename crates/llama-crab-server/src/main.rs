@@ -50,6 +50,9 @@ const DEFAULT_N_GPU_LAYERS: i32 = 0;
 struct Args {
     #[arg(long, env = "LLAMA_CRAB_MODEL")]
     model: String,
+    /// Filename within a Hugging Face repo. Required when --model is a repo id and the repo has multiple .gguf files.
+    #[arg(long, env = "LLAMA_CRAB_HF_FILENAME")]
+    hf_filename: Option<String>,
     #[arg(long, default_value = "127.0.0.1", env = "LLAMA_CRAB_HOST")]
     host: String,
     #[arg(long, default_value_t = 8080, env = "LLAMA_CRAB_PORT")]
@@ -831,6 +834,9 @@ fn spawn_worker(args: &Args) -> Result<mpsc::Sender<Job>, Box<dyn std::error::Er
         _ => llama_crab::context::params::PoolingType::Unspecified,
     };
     let mut params = LlamaParams::new(&args.model);
+    if let Some(ref f) = args.hf_filename {
+        params = params.with_hf_filename(f);
+    }
     if let Some(preset) = args.mobile_preset.as_deref() {
         let preset = preset
             .parse::<MobilePreset>()
