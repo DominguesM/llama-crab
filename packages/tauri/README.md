@@ -12,8 +12,8 @@ OpenAI-like TypeScript client for the `tauri-plugin-llama-crab` IPC runtime.
 
 Documentation:
 
-- [Tauri guide](https://dominguesm.github.io/llama-crab-docs/tauri/)
-- [User guide](https://dominguesm.github.io/llama-crab-docs/)
+- [Tauri guide](https://llama-crab.nlp.rocks/tauri/)
+- [User guide](https://llama-crab.nlp.rocks/)
 - [Repository](https://github.com/DominguesM/llama-crab)
 
 ```ts

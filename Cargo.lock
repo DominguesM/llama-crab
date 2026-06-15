@@ -2521,7 +2521,7 @@ checksum = "92daf443525c4cce67b150400bc2316076100ce0b3686209eb8cf3c31612e6f0"
 
 [[package]]
 name = "llama-crab"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "base64 0.22.1",
  "bitflags 2.13.0",
@@ -2549,7 +2549,7 @@ dependencies = [
 
 [[package]]
 name = "llama-crab-server"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "axum",
  "base64 0.22.1",
@@ -2567,7 +2567,7 @@ dependencies = [
 
 [[package]]
 name = "llama-crab-sys"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "bindgen",
  "cc",
@@ -4659,7 +4659,7 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-llama-crab"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "base64 0.22.1",
  "image",

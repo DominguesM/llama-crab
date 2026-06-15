@@ -5,19 +5,16 @@ All notable changes to `llama-crab` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.5] - 2026-06-15
 
 ### Changed
 
-- Moved the documentation site out of this repository into a dedicated
-  repository: [DominguesM/llama-crab-docs](https://github.com/DominguesM/llama-crab-docs).
-  The site is now published at
-  <https://dominguesm.github.io/llama-crab-docs/> instead of
-  <https://dominguesm.github.io/llama-crab/>. The `docs/` folder and the
+- Moved the documentation site out of this repository. The site is now
+  published at <https://llama-crab.nlp.rocks/> instead of the previous
+  GitHub Pages URLs. The `docs/` folder and the
   `Publish docs site` GitHub Actions workflow have been removed from this
   repo. README files and crate-level docs throughout this workspace were
-  updated to point at the new URL. The historical Docusaurus source tree
-  is preserved at `legacy-docusaurus/` in the docs repo for reference.
+  updated to point at the new URL.
 
 ### Added
 
@@ -86,8 +83,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reorganized the repository into `crates/` and `packages/` workspaces
   so Rust crates, TypeScript packages and examples share one release
   surface.
-- README files now point users to the new Docusaurus guide hosted at the
-  GitHub Pages site.
+- README files now point users to the project guide hosted at
+  <https://llama-crab.nlp.rocks/>.
 - CI and release workflows now build, test and publish
   `llama-crab-server`, `tauri-plugin-llama-crab` and TypeScript
   packages alongside the library crates.
@@ -283,7 +280,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 9 example crates and 3 integration tests covering Gemma 4 and
   LFM2.5-VL.
 
-[Unreleased]: https://github.com/DominguesM/llama-crab/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/DominguesM/llama-crab/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/DominguesM/llama-crab/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/DominguesM/llama-crab/compare/v0.1.201...v0.1.4
 [0.1.201]: https://github.com/DominguesM/llama-crab/compare/v0.1.2...v0.1.201
 [0.1.2]: https://github.com/DominguesM/llama-crab/compare/v0.1.1...v0.1.2

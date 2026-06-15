@@ -36,7 +36,7 @@ Multimodal chat is available when the binary is built with `--features mtmd`
 and started with `--mmproj <projector.gguf>`.
 
 For the full request schema, sampling fields and structured-output options,
-see the [server guide](https://dominguesm.github.io/llama-crab-docs/server/).
+see the [server guide](https://llama-crab.nlp.rocks/server/).
 
 ## Resources
 

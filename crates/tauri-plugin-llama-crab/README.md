@@ -72,7 +72,7 @@ contracts.
 ## Resources
 
 - [API reference (docs.rs)](https://docs.rs/tauri-plugin-llama-crab)
-- [Tauri integration guide](https://dominguesm.github.io/llama-crab-docs/tauri/)
+- [Tauri integration guide](https://llama-crab.nlp.rocks/tauri/)
 - [Workspace README](../../README.md)
 
 ## License
