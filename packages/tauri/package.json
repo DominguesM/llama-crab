@@ -2,8 +2,28 @@
   "name": "@llama-crab/tauri",
   "version": "0.1.4",
   "description": "Tauri backend adapter for llama-crab.",
+  "license": "MIT",
   "type": "module",
   "sideEffects": false,
+  "keywords": [
+    "llama.cpp",
+    "llama-crab",
+    "local-llm",
+    "openai",
+    "typescript",
+    "tauri",
+    "gguf",
+    "inference"
+  ],
+  "homepage": "https://dominguesm.github.io/llama-crab-docs/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DominguesM/llama-crab.git",
+    "directory": "packages/tauri"
+  },
+  "bugs": {
+    "url": "https://github.com/DominguesM/llama-crab/issues"
+  },
   "publishConfig": {
     "access": "public"
   },
