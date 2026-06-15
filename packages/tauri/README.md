@@ -1,6 +1,20 @@
 # `@llama-crab/tauri`
 
+<p align="center">
+  <img
+    src="https://gist.githubusercontent.com/DominguesM/127b9e5614e0e2da6b896fb3da3c8f2d/raw/d5dec07e795979f0a1b43d246a730f4031452113/canarim-crab.png"
+    alt="llama-crab logo"
+    width="180"
+  />
+</p>
+
 OpenAI-like TypeScript client for the `tauri-plugin-llama-crab` IPC runtime.
+
+Documentation:
+
+- [Tauri guide](https://dominguesm.github.io/llama-crab-docs/tauri/)
+- [User guide](https://dominguesm.github.io/llama-crab-docs/)
+- [Repository](https://github.com/DominguesM/llama-crab)
 
 ```ts
 import { LlamaCrabTauri } from "@llama-crab/tauri"
