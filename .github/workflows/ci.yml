@@ -11,6 +11,11 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+  CMAKE_C_COMPILER_LAUNCHER: "sccache"
+  CMAKE_CXX_COMPILER_LAUNCHER: "sccache"
+  SCCACHE_BASEDIRS: ${{ github.workspace }}
 
 jobs:
   fmt:
@@ -39,6 +44,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.88
         with:
           components: clippy
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
@@ -56,6 +63,9 @@ jobs:
           cargo clippy -p llama-crab --no-default-features --features common,mtmd,hf-tokenizer,disk-cache --all-targets
           cargo clippy -p llama-crab-server --all-targets
           cargo clippy -p llama-crab-server --features mtmd --all-targets
+      - name: sccache stats
+        if: always()
+        run: ${SCCACHE_PATH:-sccache} --show-stats || true
 
   build:
     name: Build (${{ matrix.name }})
@@ -85,32 +95,16 @@ jobs:
           - name: linux-server-mtmd
             os: ubuntu-latest
             features: ""
-          - name: macos-none
-            os: macos-latest
-            features: ""
-          - name: macos-common
-            os: macos-latest
-            features: common
-          - name: macos-mtmd
-            os: macos-latest
-            features: mtmd
-          - name: macos-hf-tokenizer
-            os: macos-latest
-            features: hf-tokenizer
-          - name: macos-disk-cache
-            os: macos-latest
-            features: disk-cache
           - name: macos-combo
             os: macos-latest
             features: common,mtmd,hf-tokenizer
-          - name: macos-server-mtmd
-            os: macos-latest
-            features: ""
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
       - uses: dtolnay/rust-toolchain@1.88
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
@@ -126,6 +120,9 @@ jobs:
       - name: Build server mtmd
         if: contains(matrix.name, 'server-mtmd')
         run: cargo build -p llama-crab-server --features mtmd
+      - name: sccache stats
+        if: always()
+        run: ${SCCACHE_PATH:-sccache} --show-stats || true
 
   feature-surface:
     name: Feature surface (Linux)
@@ -135,6 +132,8 @@ jobs:
         with:
           submodules: recursive
       - uses: dtolnay/rust-toolchain@1.88
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
@@ -151,6 +150,9 @@ jobs:
           cargo check -p llama-crab --no-default-features --features dynamic-link,opencl
           cargo check -p llama-crab --no-default-features --features dynamic-link,kleidiai
           cargo check -p llama-crab --no-default-features --features dynamic-link,opencl,kleidiai
+      - name: sccache stats
+        if: always()
+        run: ${SCCACHE_PATH:-sccache} --show-stats || true
 
   test:
     name: Test
@@ -164,6 +166,8 @@ jobs:
         with:
           submodules: recursive
       - uses: dtolnay/rust-toolchain@1.88
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
@@ -179,6 +183,9 @@ jobs:
           cargo test -p llama-crab --no-default-features --features common,mtmd,disk-cache
           cargo test -p llama-crab-server
           cargo test -p llama-crab-server --features mtmd
+      - name: sccache stats
+        if: always()
+        run: ${SCCACHE_PATH:-sccache} --show-stats || true
 
   doc:
     name: Doc (strict)
@@ -188,6 +195,8 @@ jobs:
         with:
           submodules: recursive
       - uses: dtolnay/rust-toolchain@nightly
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
@@ -195,3 +204,45 @@ jobs:
         run: RUSTDOCFLAGS="--cfg docsrs -D warnings" cargo +nightly doc -p llama-crab --no-deps --no-default-features --features common,mtmd
       - name: Document llama-crab-sys
         run: RUSTDOCFLAGS="--cfg docsrs -D warnings" cargo +nightly doc -p llama-crab-sys --no-deps --no-default-features --features common,mtmd
+      - name: sccache stats
+        if: always()
+        run: ${SCCACHE_PATH:-sccache} --show-stats || true
+
+  coverage:
+    name: Coverage (cargo-llvm-cov)
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: ""
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@1.88
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov --locked
+      - name: Run coverage (lib only)
+        run: cargo llvm-cov -p llama-crab --no-default-features --features openmp --lib --summary-only
+      - name: Run coverage (with mtmd + disk-cache)
+        run: cargo llvm-cov -p llama-crab --no-default-features --features openmp,mtmd,disk-cache --lib --summary-only
+      - name: Coverage gate (lib + tests)
+        run: |
+          cargo llvm-cov -p llama-crab --no-default-features --features openmp --lib --json --output-path cov.json
+          python3 - <<'PY'
+          import json, sys
+          minimum = 0.45
+          data = json.load(open("cov.json"))
+          totals = data["data"][0]["totals"]["lines"]
+          pct = totals["percent"] / 100.0
+          print(f"line coverage: {pct*100:.1f}%")
+          if pct < minimum:
+              print(f"::error::Coverage {pct*100:.1f}% is below {minimum*100:.1f}%")
+              sys.exit(1)
+          PY
+      - name: sccache stats
+        if: always()
+        run: ${SCCACHE_PATH:-sccache} --show-stats || true

@@ -12,7 +12,7 @@
   <a href="https://crates.io/crates/llama-crab"><img alt="Crates.io" src="https://img.shields.io/crates/v/llama-crab.svg?style=flat-square" /></a>
   <a href="https://docs.rs/llama-crab"><img alt="Documentation" src="https://docs.rs/llama-crab/badge.svg?style=flat-square" /></a>
   <a href="https://github.com/DominguesM/llama-crab/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/DominguesM/llama-crab/ci.yml?style=flat-square&branch=main" /></a>
-  <a href="https://github.com/DominguesM/llama-crab/actions/workflows/coverage.yml"><img alt="Coverage" src="https://img.shields.io/github/actions/workflow/status/DominguesM/llama-crab/coverage.yml?style=flat-square&branch=main" /></a>
+  <a href="https://github.com/DominguesM/llama-crab/actions/workflows/ci.yml"><img alt="Coverage" src="https://img.shields.io/github/actions/workflow/status/DominguesM/llama-crab/ci.yml?style=flat-square&branch=main" /></a>
   <a href=""><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" /></a>
 </p>
 
