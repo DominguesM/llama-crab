@@ -9,7 +9,7 @@
 <p align="center">Safe, ergonomic and complete Rust bindings for <a href="https://github.com/ggml-org/llama.cpp">llama.cpp</a>.</p>
 
 <p align="center">
-  <a href="https://crates.io/crates/llama-crab"><img alt="Crates.io" src="https://img.shields.io/crates/v/llama-crab.svg?style=flat-square" /></a>
+  <a href="https://crates.io/crates/llama-crab"><img alt="Crates.io" src="https://badgen.net/crates/v/llama-crab" /></a>
   <a href="https://docs.rs/llama-crab"><img alt="Documentation" src="https://docs.rs/llama-crab/badge.svg?style=flat-square" /></a>
   <a href="https://github.com/DominguesM/llama-crab/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/DominguesM/llama-crab/ci.yml?style=flat-square&branch=main" /></a>
   <a href="https://github.com/DominguesM/llama-crab/actions/workflows/ci.yml"><img alt="Coverage" src="https://img.shields.io/github/actions/workflow/status/DominguesM/llama-crab/ci.yml?style=flat-square&branch=main" /></a>
@@ -77,9 +77,10 @@ Runnable end-to-end examples live in the separate
 
 ### Documentation
 
-- [User guide](https://llama-crab.nlp.rocks/) — installation, examples, server, multimodal and Tauri guides.
+- [Official documentation](https://llama-crab.nlp.rocks/) — installation, examples, server, multimodal and Tauri guides.
 - [API reference (Rust)](https://docs.rs/llama-crab) — published `rustdoc`.
 - [Examples](https://llama-crab.nlp.rocks/examples/) — guide for the runnable example crates.
+- [Examples repository](https://github.com/DominguesM/llama-crab-examples) — runnable end-to-end projects.
 - [Troubleshooting](https://llama-crab.nlp.rocks/troubleshooting/) — common build and runtime issues.
 
 The documentation site is published at <https://llama-crab.nlp.rocks/>.
