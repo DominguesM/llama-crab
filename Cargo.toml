@@ -8,12 +8,12 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 rust-version = "1.88"
 license = "MIT"
 repository = "https://github.com/DominguesM/llama-crab"
-homepage = "https://github.com/DominguesM/llama-crab"
+homepage = "https://llama-crab.nlp.rocks/"
 authors = ["llama-crab contributors"]
 readme = "README.md"
 keywords = ["llama", "llm", "inference", "gguf", "ai"]
@@ -61,8 +61,8 @@ wrong_self_convention = "allow"
 needless_collect = "allow"
 
 [workspace.dependencies]
-llama-crab-sys = { path = "crates/llama-crab-sys", version = "0.1.4", default-features = false }
-llama-crab = { path = "crates/llama-crab", version = "0.1.4" }
+llama-crab-sys = { path = "crates/llama-crab-sys", version = "0.1.5", default-features = false }
+llama-crab = { path = "crates/llama-crab", version = "0.1.5" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri = { version = "2", default-features = false }

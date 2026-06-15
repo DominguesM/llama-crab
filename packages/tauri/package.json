@@ -1,6 +1,6 @@
 {
   "name": "@llama-crab/tauri",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Tauri backend adapter for llama-crab.",
   "license": "MIT",
   "type": "module",
@@ -15,7 +15,7 @@
     "gguf",
     "inference"
   ],
-  "homepage": "https://dominguesm.github.io/llama-crab-docs/",
+  "homepage": "https://llama-crab.nlp.rocks/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/DominguesM/llama-crab.git",

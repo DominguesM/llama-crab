@@ -14,8 +14,8 @@ This package does not create a runtime client. Use it for types and request norm
 
 Documentation:
 
-- [User guide](https://dominguesm.github.io/llama-crab-docs/)
-- [TypeScript packages](https://dominguesm.github.io/llama-crab-docs/tauri/)
+- [User guide](https://llama-crab.nlp.rocks/)
+- [TypeScript packages](https://llama-crab.nlp.rocks/tauri/)
 - [Repository](https://github.com/DominguesM/llama-crab)
 
 ```ts
