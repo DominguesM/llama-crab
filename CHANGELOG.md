@@ -5,6 +5,41 @@ All notable changes to `llama-crab` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] - 2026-06-15
+
+### Added
+
+- `llama-crab`: added optional Hugging Face Hub model resolution behind the
+  `hf-hub` feature. `Llama::load` can now resolve HF repository IDs, download
+  GGUF files through `hf-hub`'s sync API and then load the cached model.
+- `llama-crab`: added the public `hf` module with `HfRepo`, downloader traits
+  and test helpers, plus `LlamaError::ModelDownload` for download and
+  resolution failures.
+- `llama-crab`: added `LlamaParams` builders for Hugging Face inputs:
+  `with_hf_filename`, `with_hf_revision`, `with_hf_token`,
+  `with_hf_cache_dir` and `with_hf_endpoint`.
+- `llama-crab-server`: added opt-in Hugging Face support through the
+  `hf-hub` cargo feature and the `--hf-filename` CLI flag
+  (`LLAMA_CRAB_HF_FILENAME`) so server users can pass HF repo IDs as model
+  sources.
+- Added Hugging Face documentation for the Rust crate and server, plus an
+  env-gated integration test for the HF download/cache path.
+
+### Changed
+
+- `tauri-plugin-llama-crab` now enables `llama-crab`'s `hf-hub` feature by
+  default, allowing Tauri apps to load HF repo IDs through `load_model`
+  without additional plugin-side feature wiring.
+- CI/CD workflows now use improved caching and consolidated required-check
+  coverage for faster release validation.
+
+### Fixed
+
+- Fixed strict rustdoc failures caused by private intra-doc links in the new
+  Hugging Face resolver internals.
+- Reformatted the new Hugging Face integration tests and helpers so the
+  release passes the workspace rustfmt checks.
+
 ## [0.1.5] - 2026-06-15
 
 ### Changed
