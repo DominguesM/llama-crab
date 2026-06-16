@@ -29,7 +29,7 @@ cargo install llama-crab-server --features mtmd --force
 ```
 
 For backend selection (Metal, CUDA, Vulkan, ROCm, OpenCL, ...), see the
-[installation guide](https://llama-crab.nlp.rocks/installation/).
+[installation guide](https://llama-crab.nlp.rocks/getting-started/installation.html).
 
 ### Quickstart
 
@@ -80,9 +80,9 @@ Runnable end-to-end examples live in the separate
 - [Official documentation](https://llama-crab.nlp.rocks/) — installation, examples, server, multimodal and Tauri guides.
 - [API reference (Rust)](https://docs.rs/llama-crab/0.1.7/llama_crab/) — published `rustdoc` for the current release.
 - [API reference (latest)](https://docs.rs/llama-crab/latest/llama_crab/) — `rustdoc` for `main` / latest version.
-- [Examples](https://llama-crab.nlp.rocks/examples/) — guide for the runnable example crates.
+- [Examples](https://llama-crab.nlp.rocks/examples/examples.html) — guide for the runnable example crates.
 - [Examples repository](https://github.com/DominguesM/llama-crab-examples) — runnable end-to-end projects.
-- [Troubleshooting](https://llama-crab.nlp.rocks/troubleshooting/) — common build and runtime issues.
+- [Troubleshooting](https://llama-crab.nlp.rocks/troubleshooting.html) — common build and runtime issues.
 
 The documentation site is published at <https://llama-crab.nlp.rocks/>.
 
