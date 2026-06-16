@@ -108,7 +108,7 @@ impl LlamaContext {
         // Safety: `self.model` is a `NonNull<LlamaModel>` populated
         // by `Llama::load` from the `Box<LlamaModel>` heap address.
         // The `Llama` orchestrator guarantees the model outlives
-        // the context (declared order: `model` before `context`,
+        // the context (declared order: `context` before `model`,
         // Rust drops in declaration order). The borrow is
         // bounded by `&self` (the context's lifetime).
         unsafe { &*self.model.as_ptr() }

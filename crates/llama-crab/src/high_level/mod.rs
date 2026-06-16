@@ -42,9 +42,21 @@ pub use self::completion::{
 };
 
 /// Top-level orchestrator. Owns the backend, the model and the context.
+///
+/// # Drop order
+/// Fields are declared in **reverse drop order** so that Rust's
+/// declaration-order dropping produces the correct teardown:
+///
+/// 1. `context` (first declared, dropped first) — `LlamaContext::Drop`
+///    calls `llama_free`; the boxed `model` is still alive.
+/// 2. `model` — the `Box<LlamaModel>` is freed. The `NonNull<LlamaModel>`
+///    inside the context is no longer accessed past this point.
+/// 3. `_backend` — the backend is unloaded after both the context and
+///    the model have been released.
+/// 4. `_not_send_sync` — zero-sized marker.
 #[derive(Debug)]
 pub struct Llama {
-    _backend: LlamaBackend,
+    context: LlamaContext,
     // Boxed: `LlamaContext` stores a raw `NonNull<LlamaModel>`
     // pointer that must point at a stable address across any move
     // of the outer `Llama` value. A heap allocation satisfies that
@@ -52,7 +64,7 @@ pub struct Llama {
     // (that was the use-after-move, masked by a `mem::transmute`
     // that extended the context's lifetime to `'static`).
     model: Box<LlamaModel>,
-    context: LlamaContext,
+    _backend: LlamaBackend,
     _not_send_sync: std::marker::PhantomData<*mut ()>,
 }
 
@@ -106,9 +118,9 @@ impl Llama {
         // was unsound and is gone.
         let ctx = model.new_context(&backend, params.context.clone())?;
         Ok(Self {
-            _backend: backend,
-            model,
             context: ctx,
+            model,
+            _backend: backend,
             _not_send_sync: std::marker::PhantomData,
         })
     }
