@@ -59,7 +59,7 @@ workspace = true
 
 [dependencies]
 llama-crab-sys.workspace = true
-thiserror = "2"
+thiserror.workspace = true
 tracing = "0.1"
 tracing-core = "0.1"
 bitflags = { version = "2", features = ["serde"] }
