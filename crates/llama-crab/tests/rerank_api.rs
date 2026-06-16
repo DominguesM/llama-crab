@@ -40,11 +40,13 @@ fn rerank_scores_documents_and_top_match_is_rust() {
     )
     .expect("failed to load reranker model");
 
-    let scores = llama
-        .rerank(QUERY, DOCUMENTS)
-        .expect("rerank call failed");
+    let scores = llama.rerank(QUERY, DOCUMENTS).expect("rerank call failed");
 
-    assert_eq!(scores.len(), DOCUMENTS.len(), "must return one score per document");
+    assert_eq!(
+        scores.len(),
+        DOCUMENTS.len(),
+        "must return one score per document"
+    );
 
     // All scores should be finite.
     for (i, &s) in scores.iter().enumerate() {
@@ -90,6 +92,12 @@ fn rerank_empty_documents_returns_empty_vec() {
     .expect("failed to load reranker model");
 
     let scores: &[&str] = &[];
-    let result = llama.rerank("any query", scores).expect("empty rerank should succeed");
-    assert!(result.is_empty(), "expected empty vec, got {}", result.len());
+    let result = llama
+        .rerank("any query", scores)
+        .expect("empty rerank should succeed");
+    assert!(
+        result.is_empty(),
+        "expected empty vec, got {}",
+        result.len()
+    );
 }

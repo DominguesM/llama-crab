@@ -105,11 +105,7 @@ fn embed_called_twice_returns_consistent_dim() {
     let v2 = llama.embed("Goodbye, world!", true).expect("embed #2");
     assert_eq!(v1.len(), 768);
     assert_eq!(v2.len(), 768);
-    let diff: f32 = v1
-        .iter()
-        .zip(v2.iter())
-        .map(|(a, b)| (a - b).abs())
-        .sum();
+    let diff: f32 = v1.iter().zip(v2.iter()).map(|(a, b)| (a - b).abs()).sum();
     assert!(
         diff > 0.0,
         "different texts must produce different embeddings"
@@ -151,7 +147,5 @@ fn logits_ith_after_decode_reads_n_vocab_floats() {
 
     // `sampled_probs_ith` returns null until the default sampler has
     // run; we only assert the call does not crash.
-    let _ = llama
-        .context()
-        .sampled_probs_ith((tokens.len() as i32) - 1);
+    let _ = llama.context().sampled_probs_ith((tokens.len() as i32) - 1);
 }

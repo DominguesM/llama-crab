@@ -14,8 +14,7 @@ mod common;
 
 #[test]
 fn infill_returns_some_content() {
-    let Some(model_path) =
-        common::resolve_path("LLAMA_CRAB_QWEN_PATH", common::QWEN_DEFAULT_PATH)
+    let Some(model_path) = common::resolve_path("LLAMA_CRAB_QWEN_PATH", common::QWEN_DEFAULT_PATH)
     else {
         eprintln!(
             "skipping infill_api: model not found. \
@@ -26,10 +25,8 @@ fn infill_returns_some_content() {
     };
     common::banner("infill_returns_some_content", &model_path);
 
-    let mut llama = Llama::load(
-        LlamaParams::new(&model_path).with_n_ctx(512),
-    )
-    .expect("failed to load Qwen model");
+    let mut llama = Llama::load(LlamaParams::new(&model_path).with_n_ctx(512))
+        .expect("failed to load Qwen model");
 
     let prefix = "fn main() {";
     let suffix = "}";
@@ -51,16 +48,13 @@ fn infill_returns_some_content() {
 
 #[test]
 fn infill_called_twice_is_consistent() {
-    let Some(model_path) =
-        common::resolve_path("LLAMA_CRAB_QWEN_PATH", common::QWEN_DEFAULT_PATH)
+    let Some(model_path) = common::resolve_path("LLAMA_CRAB_QWEN_PATH", common::QWEN_DEFAULT_PATH)
     else {
         eprintln!("skipping infill_api (twice): model not found");
         return;
     };
-    let mut llama = Llama::load(
-        LlamaParams::new(&model_path).with_n_ctx(512),
-    )
-    .expect("failed to load Qwen model");
+    let mut llama = Llama::load(LlamaParams::new(&model_path).with_n_ctx(512))
+        .expect("failed to load Qwen model");
 
     // Call infill twice — the second call must not segfault or return
     // a different error kind (e.g. "context has no memory").

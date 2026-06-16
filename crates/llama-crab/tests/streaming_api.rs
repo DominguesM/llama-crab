@@ -14,8 +14,7 @@ mod common;
 
 #[test]
 fn streaming_completion_collects_tokens() {
-    let Some(model_path) =
-        common::resolve_path("LLAMA_CRAB_QWEN_PATH", common::QWEN_DEFAULT_PATH)
+    let Some(model_path) = common::resolve_path("LLAMA_CRAB_QWEN_PATH", common::QWEN_DEFAULT_PATH)
     else {
         eprintln!(
             "skipping streaming_api: model not found. \
@@ -26,10 +25,8 @@ fn streaming_completion_collects_tokens() {
     };
     common::banner("streaming_completion_collects_tokens", &model_path);
 
-    let mut llama = Llama::load(
-        LlamaParams::new(&model_path).with_n_ctx(512),
-    )
-    .expect("failed to load Qwen model");
+    let mut llama = Llama::load(LlamaParams::new(&model_path).with_n_ctx(512))
+        .expect("failed to load Qwen model");
 
     let mut collected = String::new();
     let completion = llama
@@ -60,16 +57,13 @@ fn streaming_completion_collects_tokens() {
 
 #[test]
 fn streaming_completion_can_stop_early() {
-    let Some(model_path) =
-        common::resolve_path("LLAMA_CRAB_QWEN_PATH", common::QWEN_DEFAULT_PATH)
+    let Some(model_path) = common::resolve_path("LLAMA_CRAB_QWEN_PATH", common::QWEN_DEFAULT_PATH)
     else {
         eprintln!("skipping streaming_api (stop): model not found");
         return;
     };
-    let mut llama = Llama::load(
-        LlamaParams::new(&model_path).with_n_ctx(512),
-    )
-    .expect("failed to load Qwen model");
+    let mut llama = Llama::load(LlamaParams::new(&model_path).with_n_ctx(512))
+        .expect("failed to load Qwen model");
 
     let mut chunks_seen = 0_u32;
     let completion = llama
@@ -90,7 +84,10 @@ fn streaming_completion_can_stop_early() {
          one extra token before acknowledging StreamControl::Stop); saw {chunks_seen}"
     );
     // The returned completion should reflect the stopped state.
-    assert!(completion.n_tokens > 0, "at least 1 token was generated before stop");
+    assert!(
+        completion.n_tokens > 0,
+        "at least 1 token was generated before stop"
+    );
     assert!(
         !completion.text.is_empty(),
         "stopped completion should still contain the chunk text"

@@ -30,7 +30,10 @@ pub struct LlamaContext {
 
 impl LlamaContext {
     /// Wrap a raw context pointer (internal — used by [`LlamaModel::new_context`]).
-    pub(crate) fn from_raw(handle: NonNull<sys::llama_context>, model: NonNull<LlamaModel>) -> Self {
+    pub(crate) fn from_raw(
+        handle: NonNull<sys::llama_context>,
+        model: NonNull<LlamaModel>,
+    ) -> Self {
         Self { handle, model }
     }
 
