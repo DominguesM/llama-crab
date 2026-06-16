@@ -5,6 +5,47 @@ All notable changes to `llama-crab` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.7] - 2026-06-16
+
+### Fixed
+
+- `llama-crab`: resolved a use-after-move of `LlamaModel` that caused
+  SIGSEGV when `Llama` crossed a return boundary. The self-referential
+  `&'a LlamaModel` field on `LlamaContext` (papered over by a
+  `PhantomData<*mut ()>` + `transmute` in `Llama::load`) has been
+  replaced with a heap-allocated `Box<LlamaModel>` and a
+  `NonNull<LlamaModel>` raw pointer on the context. `LlamaContext` no
+  longer carries a lifetime parameter; all `impl` blocks and the
+  `Llama::context_mut` shim were updated accordingly. The
+  encode→decode workaround previously required in `embedding.rs` and
+  `rerank.rs` is no longer needed.
+
+### Added
+
+- `llama-crab`: regression tests for the use-after-move fix and the
+  affected public API paths:
+  - `tests/embedding_regression.rs` — `embeddings_seq`,
+    `embeddings_ith`, `logits_ith`, `sampled_probs_ith` and re-entrant
+    `embed()`.
+  - `tests/rerank_api.rs` — `Llama::rerank` cross-encoder scoring
+    against `bge-reranker-base`, plus an empty-documents edge case.
+  - `tests/infill_api.rs` — `complete_infill` and re-entrant infill
+    against Qwen2.5 0.5B Instruct.
+  - `tests/streaming_api.rs` — `create_completion_stream` token
+    collection and `StreamControl::Stop` early termination.
+  - `QWEN_DEFAULT_PATH` and `RERANK_DEFAULT_PATH` constants in
+    `tests/common.rs` following the existing `resolve_path` convention.
+
+### Changed
+
+- `llama-crab` workspace: replaced the explicit 4-crate `members`
+  list with a `crates/*` glob. All current crates live under
+  `crates/`, so the glob is equivalent. `resolver` and `edition` are
+  kept at `2` and `2021` to avoid the FFI bindings breakage that
+  edition 2024 would cause in `llama-crab-sys` (bindgen generates
+  `extern "C"` blocks without `unsafe`, which is a hard error in
+  edition 2024).
+
 ## [0.1.6] - 2026-06-15
 
 ### Added

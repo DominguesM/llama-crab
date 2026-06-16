@@ -12,7 +12,7 @@
 use crate::context::LlamaContext;
 use crate::error::Result;
 
-impl LlamaContext<'_> {
+impl LlamaContext {
     /// Remove all tokens in `seq_id` between `p0` and `p1` from the KV cache.
     ///
     /// # Errors

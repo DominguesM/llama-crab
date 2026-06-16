@@ -38,6 +38,22 @@ name = "hf_download"
 path = "tests/hf_download.rs"
 required-features = ["hf-hub"]
 
+[[test]]
+name = "embedding_regression"
+path = "tests/embedding_regression.rs"
+
+[[test]]
+name = "rerank_api"
+path = "tests/rerank_api.rs"
+
+[[test]]
+name = "infill_api"
+path = "tests/infill_api.rs"
+
+[[test]]
+name = "streaming_api"
+path = "tests/streaming_api.rs"
+
 [lints]
 workspace = true
 

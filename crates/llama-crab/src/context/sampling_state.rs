@@ -9,7 +9,7 @@ use crate::context::LlamaContext;
 use crate::error::Result;
 use crate::token::LlamaToken;
 
-impl LlamaContext<'_> {
+impl LlamaContext {
     /// Borrow the logits for the `i`-th token in the last batch.
     ///
     /// The slice is valid until the next decode/encode call or until the

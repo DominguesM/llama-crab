@@ -228,11 +228,16 @@ impl LlamaModel {
         &self,
         _backend: &LlamaBackend,
         params: LlamaContextParams,
-    ) -> Result<LlamaContext<'_>> {
+    ) -> Result<LlamaContext> {
         let raw_params = params.build();
         let ctx = unsafe { sys::llama_new_context_with_model(self.handle.as_ptr(), raw_params) };
+        // Safety: `self.handle` is a `NonNull<llama_model>` (non-null
+        // by construction); cast to `NonNull<LlamaModel>` is a
+        // transparent pointer cast and the resulting pointer is
+        // valid as long as `&self` is alive.
+        let model_ptr = NonNull::from(&*self);
         NonNull::new(ctx)
-            .map(|ctx| LlamaContext::from_raw(ctx, self))
+            .map(|ctx| LlamaContext::from_raw(ctx, model_ptr))
             .ok_or(LlamaError::ContextLoad(
                 "llama_new_context_with_model returned null".into(),
             ))

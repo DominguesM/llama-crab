@@ -24,6 +24,12 @@ pub const LFM_VL_MMPROJ_DEFAULT_PATH: &str = "models/LFM2.5-VL-1.6B-mmproj-BF16.
 /// Default location for a small test image (256×256 PNG).
 pub const TEST_IMAGE_DEFAULT_PATH: &str = "tests/fixtures/test_image.png";
 
+/// Default location for Qwen2.5 0.5B Instruct (used by infill / streaming tests).
+pub const QWEN_DEFAULT_PATH: &str = "models/qwen2.5-0.5b-instruct-q4_k_m.gguf";
+
+/// Default location for bge-reranker-base (used by the rerank API test).
+pub const RERANK_DEFAULT_PATH: &str = "models/bge-reranker-base-q4_k_m.gguf";
+
 /// Resolve a model path from `LLAMA_CRAB_<NAME>` env var, falling back to
 /// the conventional default.
 pub fn resolve_path(env_var: &str, default: &str) -> Option<PathBuf> {

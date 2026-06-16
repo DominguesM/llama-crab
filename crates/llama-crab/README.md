@@ -69,7 +69,8 @@ For the full feature table, backend flags and mobile build details, see the
 
 ## Resources
 
-- [API reference (docs.rs)](https://docs.rs/llama-crab)
+- [API reference (0.1.7)](https://docs.rs/llama-crab/0.1.7/llama_crab/) — `rustdoc` for the current release.
+- [API reference (latest)](https://docs.rs/llama-crab/latest/llama_crab/) — `rustdoc` for the latest version.
 - [User guide](https://llama-crab.nlp.rocks/)
 - [Examples repository](https://github.com/DominguesM/llama-crab-examples)
 - [Workspace README](../../README.md)
