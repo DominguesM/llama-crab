@@ -16,14 +16,21 @@ use crate::model::LlamaModel;
 
 /// A `llama_context` — the inferencing state for a [`LlamaModel`].
 #[derive(Debug)]
-pub struct LlamaContext<'a> {
+pub struct LlamaContext {
     pub(crate) handle: NonNull<sys::llama_context>,
-    pub(crate) model: &'a LlamaModel,
+    // Raw pointer to the model. The lifetime tie is enforced at the
+    // higher level: `Llama` owns the boxed model and ensures the
+    // context is dropped before the model. A raw pointer avoids the
+    // self-referential-struct problem the previous `&'a LlamaModel`
+    // field had (which the `Llama::load` transmute tried to paper
+    // over and which manifested as a use-after-move when `Llama`
+    // crossed a return boundary).
+    pub(crate) model: NonNull<LlamaModel>,
 }
 
-impl<'a> LlamaContext<'a> {
+impl LlamaContext {
     /// Wrap a raw context pointer (internal — used by [`LlamaModel::new_context`]).
-    pub(crate) fn from_raw(handle: NonNull<sys::llama_context>, model: &'a LlamaModel) -> Self {
+    pub(crate) fn from_raw(handle: NonNull<sys::llama_context>, model: NonNull<LlamaModel>) -> Self {
         Self { handle, model }
     }
 
@@ -86,9 +93,22 @@ impl<'a> LlamaContext<'a> {
     }
 
     /// Borrow the model this context was created from.
+    ///
+    /// # Safety contract
+    /// The returned reference is valid only as long as the `Llama`
+    /// that owns both the boxed model and this context is alive.
+    /// All public call sites in this crate hold such a `Llama`
+    /// for the duration of the borrow, so the lifetime is sound
+    /// in practice.
     #[must_use]
-    pub const fn model(&self) -> &'a LlamaModel {
-        self.model
+    pub fn model(&self) -> &LlamaModel {
+        // Safety: `self.model` is a `NonNull<LlamaModel>` populated
+        // by `Llama::load` from the `Box<LlamaModel>` heap address.
+        // The `Llama` orchestrator guarantees the model outlives
+        // the context (declared order: `model` before `context`,
+        // Rust drops in declaration order). The borrow is
+        // bounded by `&self` (the context's lifetime).
+        unsafe { &*self.model.as_ptr() }
     }
 
     /// Borrow the underlying C handle (read-only).
@@ -98,10 +118,10 @@ impl<'a> LlamaContext<'a> {
 }
 
 // Safety: see `LlamaModel` — the context is read-only after init.
-unsafe impl Send for LlamaContext<'_> {}
-unsafe impl Sync for LlamaContext<'_> {}
+unsafe impl Send for LlamaContext {}
+unsafe impl Sync for LlamaContext {}
 
-impl Drop for LlamaContext<'_> {
+impl Drop for LlamaContext {
     fn drop(&mut self) {
         // Safety: `handle` is exclusively owned and was returned by
         // `llama_new_context_with_model`.

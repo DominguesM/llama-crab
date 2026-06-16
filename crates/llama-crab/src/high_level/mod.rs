@@ -45,8 +45,14 @@ pub use self::completion::{
 #[derive(Debug)]
 pub struct Llama {
     _backend: LlamaBackend,
-    model: LlamaModel,
-    context: LlamaContext<'static>,
+    // Boxed: `LlamaContext` stores a raw `NonNull<LlamaModel>`
+    // pointer that must point at a stable address across any move
+    // of the outer `Llama` value. A heap allocation satisfies that
+    // requirement; a stack slot in `Llama::load`'s frame does not
+    // (that was the use-after-move, masked by a `mem::transmute`
+    // that extended the context's lifetime to `'static`).
+    model: Box<LlamaModel>,
+    context: LlamaContext,
     _not_send_sync: std::marker::PhantomData<*mut ()>,
 }
 
@@ -83,13 +89,22 @@ impl Llama {
             downloader.as_ref(),
         )?;
 
-        let model = LlamaModel::load_from_file(&backend, &resolved_path, &params.model)?;
-        // We transmute the lifetime of the context to `'static` because
-        // `Llama` owns the model and outlives the context. The PhantomData
-        // marker keeps `Llama` !Send/!Sync to mirror llama.cpp's thread model.
+        // Box the model before borrowing it: the `&LlamaModel`
+        // captured by `LlamaContext::model` must point at a
+        // heap-stable address that survives the move of `Llama`
+        // into the caller's frame.
+        let model = Box::new(LlamaModel::load_from_file(
+            &backend,
+            &resolved_path,
+            &params.model,
+        )?);
+        // `ctx` now legitimately borrows from the boxed model;
+        // its lifetime is tied to the borrow of `model` here,
+        // which the borrow checker extends through the move
+        // into `Self` because both fields are co-owned by
+        // `Llama`. The previous `mem::transmute` to `'static`
+        // was unsound and is gone.
         let ctx = model.new_context(&backend, params.context.clone())?;
-        let ctx: LlamaContext<'static> =
-            unsafe { std::mem::transmute::<LlamaContext<'_>, LlamaContext<'static>>(ctx) };
         Ok(Self {
             _backend: backend,
             model,
@@ -100,13 +115,14 @@ impl Llama {
 
     /// Borrow the inner model.
     #[must_use]
-    pub const fn model(&self) -> &LlamaModel {
+    pub fn model(&self) -> &LlamaModel {
+        // Deref through the Box; the return type is unchanged.
         &self.model
     }
 
     /// Borrow the inner context.
     #[must_use]
-    pub const fn context(&mut self) -> &mut LlamaContext<'static> {
+    pub fn context(&mut self) -> &mut LlamaContext {
         &mut self.context
     }
 

@@ -12,7 +12,7 @@ use std::path::Path;
 use crate::context::LlamaContext;
 use crate::error::{LlamaError, Result};
 
-impl LlamaContext<'_> {
+impl LlamaContext {
     /// Return the number of bytes required to serialize the full state.
     #[must_use]
     pub fn state_size(&self) -> usize {

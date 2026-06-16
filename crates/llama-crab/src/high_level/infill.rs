@@ -98,7 +98,7 @@ impl Llama {
 // Small shim to keep `self.context()` available.
 impl Llama {
     /// Borrow the context mutably (used internally by helpers).
-    pub(crate) fn context_mut(&mut self) -> &mut crate::context::LlamaContext<'static> {
+    pub(crate) fn context_mut(&mut self) -> &mut crate::context::LlamaContext {
         &mut self.context
     }
 }

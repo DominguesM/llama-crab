@@ -7,7 +7,7 @@
 use crate::context::LlamaContext;
 use crate::error::{LlamaError, Result};
 
-impl LlamaContext<'_> {
+impl LlamaContext {
     /// Return the embedding vector of the last sequence in the most recent
     /// `encode` call.
     ///
