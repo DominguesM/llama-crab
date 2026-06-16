@@ -23,7 +23,7 @@ hf-hub = ["llama-crab/hf-hub"]
 
 [dependencies]
 llama-crab = { workspace = true, features = ["common", "hf-hub"] }
-axum = "0.7"
+axum = "0.8"
 base64 = "0.22"
 clap = { version = "4", features = ["derive", "env"] }
 futures-util = "0.3"
@@ -31,6 +31,6 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "sync"] }
 tokio-stream = { version = "0.1", features = ["sync"] }
-tower-http = { version = "0.6", features = ["cors", "trace"] }
+tower-http = { version = "0.7", features = ["cors", "trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
